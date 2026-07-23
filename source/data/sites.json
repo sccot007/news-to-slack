@@ -1,0 +1,22 @@
+{
+  "sites": [
+    {
+      "id": "cncf-blog",
+      "name": "CNCF Blog",
+      "url": "https://www.cncf.io/blog/",
+      "type": "rss",
+      "feed_url": "https://www.cncf.io/blog/feed/",
+      "lang": "en",
+      "enabled": true
+    },
+    {
+      "id": "aitimes",
+      "name": "AI타임스",
+      "url": "https://www.aitimes.com/news/articleList.html",
+      "type": "rss",
+      "feed_url": "https://www.aitimes.com/rss/allArticle.xml",
+      "lang": "ko",
+      "enabled": true
+    }
+  ]
+}

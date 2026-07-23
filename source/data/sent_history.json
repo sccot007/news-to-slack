@@ -1,0 +1,359 @@
+{
+  "entries": [
+    {
+      "site_id": "cncf-blog",
+      "title": "Confidential Containers becomes a CNCF incubating project",
+      "normalized_title": "confidentialcontainersbecomesacncfincubatingproject",
+      "keywords": [
+        "becomes",
+        "cncf",
+        "confidential",
+        "containers",
+        "incubating",
+        "project"
+      ],
+      "link": "https://www.cncf.io/blog/2026/07/22/confidential-containers-becomes-a-cncf-incubating-project/",
+      "sent_at": "2026-07-23T05:57:54.121286+00:00"
+    },
+    {
+      "site_id": "cncf-blog",
+      "title": "Multi-Cluster databases on Kubernetes: Architecture and deployment",
+      "normalized_title": "multiclusterdatabasesonkubernetesarchitectureanddeployment",
+      "keywords": [
+        "and",
+        "architecture",
+        "databases",
+        "deployment",
+        "kubernetes",
+        "multicluster",
+        "on"
+      ],
+      "link": "https://www.cncf.io/blog/2026/07/22/multi-cluster-databases-on-kubernetes-architecture-and-deployment/",
+      "sent_at": "2026-07-23T05:57:56.780744+00:00"
+    },
+    {
+      "site_id": "cncf-blog",
+      "title": "I made a policy engine think it was in production",
+      "normalized_title": "imadeapolicyenginethinkitwasinproduction",
+      "keywords": [
+        "engine",
+        "in",
+        "it",
+        "made",
+        "policy",
+        "production",
+        "think",
+        "was"
+      ],
+      "link": "https://www.cncf.io/blog/2026/07/22/i-made-a-policy-engine-think-it-was-in-production/",
+      "sent_at": "2026-07-23T05:57:59.647398+00:00"
+    },
+    {
+      "site_id": "cncf-blog",
+      "title": "Why your agent needs access to your documentation",
+      "normalized_title": "whyyouragentneedsaccesstoyourdocumentation",
+      "keywords": [
+        "access",
+        "agent",
+        "documentation",
+        "needs",
+        "to",
+        "why",
+        "your"
+      ],
+      "link": "https://www.cncf.io/blog/2026/07/21/why-your-agent-needs-access-to-your-documentation/",
+      "sent_at": "2026-07-23T05:58:03.959164+00:00"
+    },
+    {
+      "site_id": "cncf-blog",
+      "title": "Platform engineering for the agentic enterprise: Managing applications, resources, and AI agents",
+      "normalized_title": "platformengineeringfortheagenticenterprisemanagingapplicationsresourcesandaiagents",
+      "keywords": [
+        "agentic",
+        "agents",
+        "ai",
+        "and",
+        "applications",
+        "engineering",
+        "enterprise",
+        "for",
+        "managing",
+        "platform",
+        "resources",
+        "the"
+      ],
+      "link": "https://www.cncf.io/blog/2026/07/21/platform-engineering-for-the-agentic-enterprise-managing-applications-resources-and-ai-agents/",
+      "sent_at": "2026-07-23T05:58:07.295382+00:00"
+    },
+    {
+      "site_id": "cncf-blog",
+      "title": "ArgoCon Japan 2026: Meeting the Maintainers, enterprise insights, and the road to Argo CD 3.5",
+      "normalized_title": "argoconjapan2026meetingthemaintainersenterpriseinsightsandtheroadtoargocd35",
+      "keywords": [
+        "2026",
+        "35",
+        "and",
+        "argo",
+        "argocon",
+        "cd",
+        "enterprise",
+        "insights",
+        "japan",
+        "maintainers",
+        "meeting",
+        "road",
+        "the",
+        "to"
+      ],
+      "link": "https://www.cncf.io/blog/2026/07/20/argocon-japan-2026-meeting-the-maintainers-enterprise-insights-and-the-road-to-argo-cd-3-5/",
+      "sent_at": "2026-07-23T05:58:10.687373+00:00"
+    },
+    {
+      "site_id": "cncf-blog",
+      "title": "Why goodput matters more than throughput for LLM serving",
+      "normalized_title": "whygoodputmattersmorethanthroughputforllmserving",
+      "keywords": [
+        "for",
+        "goodput",
+        "llm",
+        "matters",
+        "more",
+        "serving",
+        "than",
+        "throughput",
+        "why"
+      ],
+      "link": "https://www.cncf.io/blog/2026/07/20/why-goodput-matters-more-than-throughput-for-llm-serving/",
+      "sent_at": "2026-07-23T05:58:13.776679+00:00"
+    },
+    {
+      "site_id": "cncf-blog",
+      "title": "Flipkart and LitmusChaos at KubeCon + CloudNativeCon India 2026: A recap",
+      "normalized_title": "flipkartandlitmuschaosatkubeconcloudnativeconindia2026arecap",
+      "keywords": [
+        "2026",
+        "and",
+        "at",
+        "cloudnativecon",
+        "flipkart",
+        "india",
+        "kubecon",
+        "litmuschaos",
+        "recap"
+      ],
+      "link": "https://www.cncf.io/blog/2026/07/17/flipkart-and-litmuschaos-at-kubecon-cloudnativecon-india-2026-a-recap/",
+      "sent_at": "2026-07-23T05:58:16.837257+00:00"
+    },
+    {
+      "site_id": "cncf-blog",
+      "title": "Running a self-hosted LLM in Kubernetes with vLLM",
+      "normalized_title": "runningaselfhostedllminkuberneteswithvllm",
+      "keywords": [
+        "in",
+        "kubernetes",
+        "llm",
+        "running",
+        "selfhosted",
+        "vllm",
+        "with"
+      ],
+      "link": "https://www.cncf.io/blog/2026/07/16/running-a-self-hosted-llm-in-kubernetes-with-vllm/",
+      "sent_at": "2026-07-23T05:58:20.160312+00:00"
+    },
+    {
+      "site_id": "cncf-blog",
+      "title": "HAMi becomes a CNCF incubating project",
+      "normalized_title": "hamibecomesacncfincubatingproject",
+      "keywords": [
+        "becomes",
+        "cncf",
+        "hami",
+        "incubating",
+        "project"
+      ],
+      "link": "https://www.cncf.io/blog/2026/07/15/hami-becomes-a-cncf-incubating-project/",
+      "sent_at": "2026-07-23T05:58:23.389549+00:00"
+    },
+    {
+      "site_id": "aitimes",
+      "title": "순천만국가정원서 전국 러너 500명 달린다…25일 10km 가든런",
+      "normalized_title": "순천만국가정원서전국러너500명달린다25일10km가든런",
+      "keywords": [
+        "10km",
+        "500명",
+        "가든런",
+        "달린다25일",
+        "러너",
+        "순천만국가정원서",
+        "전국"
+      ],
+      "link": "https://www.aitimes.com/news/articleView.html?idxno=213081",
+      "sent_at": "2026-07-23T05:58:26.090172+00:00"
+    },
+    {
+      "site_id": "aitimes",
+      "title": "“GPU 2장으로 고성능 에이전트 구동”…업스테이지 ‘솔라 오픈 2’ 공개",
+      "normalized_title": "gpu2장으로고성능에이전트구동업스테이지솔라오픈2공개",
+      "keywords": [
+        "2장으로",
+        "gpu",
+        "고성능",
+        "공개",
+        "구동업스테이지",
+        "솔라",
+        "에이전트",
+        "오픈"
+      ],
+      "link": "https://www.aitimes.com/news/articleView.html?idxno=213090",
+      "sent_at": "2026-07-23T05:58:28.878580+00:00"
+    },
+    {
+      "site_id": "aitimes",
+      "title": "AMD, 앤트로픽에 최대 7.4조 투자... 2GW 규모 차세대 AI 칩 공급한다",
+      "normalized_title": "amd앤트로픽에최대74조투자2gw규모차세대ai칩공급한다",
+      "keywords": [
+        "2gw",
+        "74조",
+        "ai",
+        "amd",
+        "공급한다",
+        "규모",
+        "앤트로픽에",
+        "차세대",
+        "최대",
+        "투자"
+      ],
+      "link": "https://www.aitimes.com/news/articleView.html?idxno=213078",
+      "sent_at": "2026-07-23T05:58:32.108949+00:00"
+    },
+    {
+      "site_id": "aitimes",
+      "title": "백악관 \"문샷 '키미 K3'는 미국 칩과 모델 훔친 결과\"…강력 제재 경고",
+      "normalized_title": "백악관문샷키미k3는미국칩과모델훔친결과강력제재경고",
+      "keywords": [
+        "k3는",
+        "결과강력",
+        "경고",
+        "모델",
+        "문샷",
+        "미국",
+        "백악관",
+        "제재",
+        "칩과",
+        "키미",
+        "훔친"
+      ],
+      "link": "https://www.aitimes.com/news/articleView.html?idxno=213068",
+      "sent_at": "2026-07-23T05:58:34.912241+00:00"
+    },
+    {
+      "site_id": "aitimes",
+      "title": "아마존, AGI 조직 인력 감축...\"실용 AI 서비스에 자원 집중\"",
+      "normalized_title": "아마존agi조직인력감축실용ai서비스에자원집중",
+      "keywords": [
+        "agi",
+        "ai",
+        "감축실용",
+        "서비스에",
+        "아마존",
+        "인력",
+        "자원",
+        "조직",
+        "집중"
+      ],
+      "link": "https://www.aitimes.com/news/articleView.html?idxno=213086",
+      "sent_at": "2026-07-23T05:58:38.720528+00:00"
+    },
+    {
+      "site_id": "aitimes",
+      "title": "구글 '제미나이' 월간 사용자 9.5억명 돌파...챗GPT에 '5000만명' 차 추격",
+      "normalized_title": "구글제미나이월간사용자95억명돌파챗gpt에5000만명차추격",
+      "keywords": [
+        "5000만명",
+        "95억명",
+        "구글",
+        "돌파챗gpt에",
+        "사용자",
+        "월간",
+        "제미나이",
+        "추격"
+      ],
+      "link": "https://www.aitimes.com/news/articleView.html?idxno=213071",
+      "sent_at": "2026-07-23T05:58:41.440079+00:00"
+    },
+    {
+      "site_id": "aitimes",
+      "title": "엘리스그룹, 부산 산업단지 내 국내 최초 '엣지 AI 데이터센터' 짓는다",
+      "normalized_title": "엘리스그룹부산산업단지내국내최초엣지ai데이터센터짓는다",
+      "keywords": [
+        "ai",
+        "국내",
+        "데이터센터",
+        "부산",
+        "산업단지",
+        "엘리스그룹",
+        "엣지",
+        "짓는다",
+        "최초"
+      ],
+      "link": "https://www.aitimes.com/news/articleView.html?idxno=213070",
+      "sent_at": "2026-07-23T05:58:44.314625+00:00"
+    },
+    {
+      "site_id": "aitimes",
+      "title": "금융 AI 전문 알프레드, 배달의 민족 출신 조영호 CTO 영입",
+      "normalized_title": "금융ai전문알프레드배달의민족출신조영호cto영입",
+      "keywords": [
+        "ai",
+        "cto",
+        "금융",
+        "민족",
+        "배달의",
+        "알프레드",
+        "영입",
+        "전문",
+        "조영호",
+        "출신"
+      ],
+      "link": "https://www.aitimes.com/news/articleView.html?idxno=213080",
+      "sent_at": "2026-07-23T05:58:46.936125+00:00"
+    },
+    {
+      "site_id": "aitimes",
+      "title": "SKT, 로봇 학습 데이터 표준화 나선다...ITU-T 신규 과제 채택",
+      "normalized_title": "skt로봇학습데이터표준화나선다itut신규과제채택",
+      "keywords": [
+        "skt",
+        "과제",
+        "나선다itut",
+        "데이터",
+        "로봇",
+        "신규",
+        "채택",
+        "표준화",
+        "학습"
+      ],
+      "link": "https://www.aitimes.com/news/articleView.html?idxno=213083",
+      "sent_at": "2026-07-23T05:58:52.130803+00:00"
+    },
+    {
+      "site_id": "aitimes",
+      "title": "리벨리온, 국산 NPU로 SKT 독자 모델 'A.X K1' 구동 성공",
+      "normalized_title": "리벨리온국산npu로skt독자모델axk1구동성공",
+      "keywords": [
+        "ax",
+        "k1",
+        "npu로",
+        "skt",
+        "구동",
+        "국산",
+        "독자",
+        "리벨리온",
+        "모델",
+        "성공"
+      ],
+      "link": "https://www.aitimes.com/news/articleView.html?idxno=213074",
+      "sent_at": "2026-07-23T05:58:55.126845+00:00"
+    }
+  ]
+}
