@@ -1,5 +1,43 @@
 {
+  "quotas": {
+    "domestic": 20,
+    "cn-official": 10,
+    "ai-primary": 8,
+    "cn-deep": 7,
+    "ai-curation": 5
+  },
+  "total_limit": 50,
   "sites": [
+    {
+      "id": "openai-news",
+      "name": "OpenAI News",
+      "url": "https://openai.com/news/",
+      "type": "rss",
+      "feed_url": "https://openai.com/news/rss.xml",
+      "lang": "en",
+      "category": "ai-primary",
+      "enabled": true
+    },
+    {
+      "id": "deepmind-blog",
+      "name": "Google DeepMind Blog",
+      "url": "https://deepmind.google/blog/",
+      "type": "rss",
+      "feed_url": "https://deepmind.google/blog/rss.xml",
+      "lang": "en",
+      "category": "ai-primary",
+      "enabled": true
+    },
+    {
+      "id": "simon-willison",
+      "name": "Simon Willison's Weblog",
+      "url": "https://simonwillison.net/",
+      "type": "rss",
+      "feed_url": "https://simonwillison.net/atom/everything/",
+      "lang": "en",
+      "category": "ai-curation",
+      "enabled": true
+    },
     {
       "id": "cncf-blog",
       "name": "CNCF Blog",
@@ -7,6 +45,67 @@
       "type": "rss",
       "feed_url": "https://www.cncf.io/blog/feed/",
       "lang": "en",
+      "category": "cn-official",
+      "enabled": true
+    },
+    {
+      "id": "kubernetes-blog",
+      "name": "Kubernetes Blog",
+      "url": "https://kubernetes.io/blog/",
+      "type": "rss",
+      "feed_url": "https://kubernetes.io/feed.xml",
+      "lang": "en",
+      "category": "cn-official",
+      "enabled": true
+    },
+    {
+      "id": "the-new-stack",
+      "name": "The New Stack",
+      "url": "https://thenewstack.io/",
+      "type": "rss",
+      "feed_url": "https://thenewstack.io/feed/",
+      "lang": "en",
+      "category": "cn-deep",
+      "enabled": true
+    },
+    {
+      "id": "infoq-cloud",
+      "name": "InfoQ Cloud",
+      "url": "https://www.infoq.com/cloud/",
+      "type": "rss",
+      "feed_url": "https://feed.infoq.com/Cloud/",
+      "lang": "en",
+      "category": "cn-deep",
+      "enabled": true
+    },
+    {
+      "id": "woowahan-techblog",
+      "name": "우아한형제들 기술블로그",
+      "url": "https://techblog.woowahan.com/",
+      "type": "rss",
+      "feed_url": "https://techblog.woowahan.com/feed/",
+      "lang": "ko",
+      "category": "domestic",
+      "enabled": true
+    },
+    {
+      "id": "kakao-techblog",
+      "name": "카카오 기술블로그",
+      "url": "https://tech.kakao.com/",
+      "type": "rss",
+      "feed_url": "https://tech.kakao.com/feed/",
+      "lang": "ko",
+      "category": "domestic",
+      "enabled": true
+    },
+    {
+      "id": "naver-d2",
+      "name": "네이버 D2",
+      "url": "https://d2.naver.com/",
+      "type": "rss",
+      "feed_url": "https://d2.naver.com/d2.atom",
+      "lang": "ko",
+      "category": "domestic",
       "enabled": true
     },
     {
@@ -16,6 +115,7 @@
       "type": "rss",
       "feed_url": "https://www.aitimes.com/rss/allArticle.xml",
       "lang": "ko",
+      "category": "domestic",
       "enabled": true
     }
   ]

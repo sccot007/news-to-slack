@@ -15,7 +15,10 @@ from bs4 import BeautifulSoup
 
 from config import REQUEST_TIMEOUT
 
-USER_AGENT = "ITnews-bot/1.0 (+https://github.com/)"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
 
 
 def fetch_html(url: str, selectors: dict, limit: int) -> list[dict]:
@@ -49,6 +52,7 @@ def fetch_html(url: str, selectors: dict, limit: int) -> list[dict]:
                 "title": title,
                 "link": urljoin(url, raw_link),
                 "published": None,
+                "published_at": None,
                 "description": "",
             }
         )

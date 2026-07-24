@@ -1,4 +1,8 @@
-"""진입점: 사이트 순회 -> 수집 -> 중복 필터 -> 요약/번역 -> Slack 발송 -> 이력 저장."""
+"""진입점: 수집 -> 중복 필터 -> 카테고리 쿼터 선별 -> 요약/번역 -> Slack 발송 -> 이력 저장.
+
+selector는 반드시 summarizer보다 앞에 위치한다. 발송하지 않을 글까지 요약하면
+Gemini/Anthropic API 호출 비용이 크게 늘어나기 때문이다 (CLAUDE.md 참고).
+"""
 import argparse
 import json
 import sys
@@ -7,6 +11,7 @@ from datetime import datetime
 from config import SITES_FILE, ITEMS_PER_SITE
 from fetcher import fetch_rss, fetch_html
 from dedup import load_history, save_history, prune_old_entries, is_duplicate, make_entry
+from selector import select_candidates
 from summarizer import summarize_item
 from notifier import send_digest
 
@@ -16,10 +21,29 @@ def log(message: str) -> None:
     print(f"[{timestamp}] {message}", file=sys.stderr)
 
 
-def load_sites() -> list[dict]:
+def load_config() -> dict:
     with open(SITES_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
-    return [site for site in data.get("sites", []) if site.get("enabled", True)]
+
+    quotas = data.get("quotas", {})
+    total_limit = data.get("total_limit", sum(quotas.values()))
+    sites = [site for site in data.get("sites", []) if site.get("enabled", True)]
+
+    _validate_config(quotas, total_limit, sites)
+    return {"quotas": quotas, "total_limit": total_limit, "sites": sites}
+
+
+def _validate_config(quotas: dict, total_limit: int, sites: list[dict]) -> None:
+    quota_sum = sum(quotas.values())
+    if quota_sum > total_limit:
+        raise ValueError(f"quotas 합계({quota_sum})가 total_limit({total_limit})을 초과합니다")
+
+    for site in sites:
+        category = site.get("category")
+        if category not in quotas:
+            raise ValueError(
+                f"[{site.get('id')}] category '{category}'가 quotas에 정의되어 있지 않습니다"
+            )
 
 
 def fetch_site_items(site: dict) -> list[dict]:
@@ -52,7 +76,7 @@ def collect_candidates(sites: list[dict], history: list[dict], force: bool) -> l
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="지정 사이트 최신 글을 요약해 Slack으로 발송")
+    parser = argparse.ArgumentParser(description="지정 사이트 최신 글을 카테고리 쿼터에 따라 선별, 요약해 Slack으로 발송")
     parser.add_argument(
         "--dry-run", action="store_true", help="Slack 발송/이력 저장 없이 콘솔에만 출력"
     )
@@ -60,21 +84,23 @@ def main() -> int:
         "--force", action="store_true", help="중복 여부와 무관하게 이번 실행에서 발견한 글을 모두 대상으로 함"
     )
     parser.add_argument(
-        "--limit", type=int, default=None, help="전체 대상 글 개수를 N건으로 제한 (테스트용)"
+        "--limit", type=int, default=None, help="선별 후 최종 건수를 N건으로 추가 제한 (테스트용)"
     )
     args = parser.parse_args()
 
-    sites = load_sites()
+    config = load_config()
     history = load_history()
 
-    candidates = collect_candidates(sites, history, args.force)
+    candidates = collect_candidates(config["sites"], history, args.force)
+    selected = select_candidates(candidates, config["quotas"], config["total_limit"], log=log)
+
     if args.limit is not None:
-        candidates = candidates[: args.limit]
+        selected = selected[: args.limit]
 
     new_items_by_site = {}
     newly_sent_entries = []
 
-    for candidate in candidates:
+    for candidate in selected:
         site = candidate["site"]
         item = candidate["item"]
 
