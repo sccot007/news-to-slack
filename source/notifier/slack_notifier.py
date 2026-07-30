@@ -14,10 +14,14 @@ def _format_message(new_items_by_site: dict) -> str:
         lines.append(f"\n*{site_name}*")
         for item in items:
             display_title = item.get("display_title") or item["title"]
-            lines.append(f"• <{item['link']}|{display_title}>")
+            page_url = item.get("page_url")
+            title_link = page_url or item["link"]
+            lines.append(f"• <{title_link}|{display_title}>")
             summary = item.get("summary")
             if summary:
                 lines.append(f"   {summary}")
+            if page_url:
+                lines.append(f"   (<{item['link']}|원문 보기>)")
     return "\n".join(lines)
 
 

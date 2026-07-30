@@ -50,10 +50,12 @@ def _fetch_via_curl(feed_url: str) -> bytes:
 def fetch_rss(feed_url: str, limit: int) -> list[dict]:
     """피드에서 최신 항목을 최대 limit개 가져온다.
 
-    각 항목은 {"title", "link", "published", "published_at", "description"} 형태.
+    각 항목은 {"title", "link", "published", "published_at", "description", "content_html"} 형태.
     - published: 원문 그대로의 발행일 문자열 (표시/디버깅용)
     - published_at: UTC ISO 8601로 정규화된 발행일. 없으면 None (selector가 가장 오래된 것으로 취급)
     - description: 요약 생성 시 참고할 발췌 (HTML 태그 제거, 길이 제한)
+    - content_html: content:encoded 등으로 제공되는 전체 본문 HTML (없으면 빈 문자열).
+      full_translate 사이트의 전문 번역에 사용된다.
     """
     try:
         response = requests.get(
@@ -75,6 +77,8 @@ def fetch_rss(feed_url: str, limit: int) -> list[dict]:
         if not title or not link:
             continue
         description = _strip_html(entry.get("summary", ""))[:DESCRIPTION_MAX_LENGTH]
+        content_entries = entry.get("content")
+        content_html = content_entries[0]["value"] if content_entries else ""
         items.append(
             {
                 "title": title,
@@ -82,6 +86,7 @@ def fetch_rss(feed_url: str, limit: int) -> list[dict]:
                 "published": entry.get("published", None),
                 "published_at": _to_iso(entry.get("published_parsed")),
                 "description": description,
+                "content_html": content_html,
             }
         )
     return items

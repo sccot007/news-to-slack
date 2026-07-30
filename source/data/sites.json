@@ -4,9 +4,10 @@
     "cn-official": 10,
     "ai-primary": 8,
     "cn-deep": 7,
-    "ai-curation": 5
+    "ai-curation": 5,
+    "cncf-blog": 7
   },
-  "total_limit": 50,
+  "total_limit": 57,
   "sites": [
     {
       "id": "openai-news",
@@ -45,7 +46,8 @@
       "type": "rss",
       "feed_url": "https://www.cncf.io/blog/feed/",
       "lang": "en",
-      "category": "cn-official",
+      "category": "cncf-blog",
+      "full_translate": true,
       "enabled": true
     },
     {

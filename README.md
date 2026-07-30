@@ -12,15 +12,18 @@
   - Gemini를 우선 호출하고 실패 시 Anthropic으로 폴백, 둘 다 실패하면 원문을 그대로 사용
   - selector가 먼저 대상을 추려내므로, 전체 수집 건수가 많아도 API는 최종 선별분만 호출한다
 - **Slack 발송**: Incoming Webhook으로 발송, 클릭 시 원문 기사로 이동
+- **전문(全文) 번역 페이지**: `full_translate: true`로 등록된 사이트(현재 CNCF Blog)는 제목을 클릭하면
+  요약 대신 GitHub Pages에 자동 배포되는 번역 전문 페이지로 이동하고, 원문은 별도 링크로 제공 (`pages.py`)
 
 ## 등록된 사이트 (카테고리별)
 
 | 카테고리 | 슬롯 | 사이트 |
 | --- | --- | --- |
 | `domestic` | 20 | 우아한형제들 기술블로그, 카카오 기술블로그, 네이버 D2, AI타임스 |
-| `cn-official` | 10 | CNCF Blog, Kubernetes Blog |
+| `cn-official` | 10 | Kubernetes Blog |
 | `ai-primary` | 8 | OpenAI News, Google DeepMind Blog |
 | `cn-deep` | 7 | The New Stack, InfoQ Cloud |
+| `cncf-blog` | 7 | CNCF Blog (전문 번역, GitHub Pages 링크) |
 | `ai-curation` | 5 | Simon Willison's Weblog |
 
 ## 폴더 구조
@@ -30,11 +33,14 @@
 ├── CLAUDE.md          # 개발 규칙 및 아키텍처 요약 (Claude Code용)
 ├── doc/               # 작업 계획 문서
 │   └── plan.md
+├── docs/              # GitHub Pages로 배포되는 번역 전문 페이지 (자동 생성)
+│   └── articles/
 └── source/            # 애플리케이션 코드
     ├── main.py        # 진입점
     ├── config.py
     ├── selector.py    # 카테고리 쿼터 기반 선별
     ├── summarizer.py  # 요약/번역 (Gemini → Anthropic 폴백)
+    ├── pages.py       # 번역 전문 페이지 렌더링 + GitHub Pages 배포
     ├── dedup.py
     ├── fetcher/       # RSS / HTML 수집
     ├── notifier/      # Slack 발송
@@ -65,8 +71,9 @@ Raspberry Pi OS/Debian에는 기본 포함되어 있고, 없으면 `apt install 
 | `ITEMS_PER_SITE` | 사이트별로 확인할 최신 글 후보 개수 (기본 10) | X |
 | `DEDUP_KEYWORD_THRESHOLD` | 중복 판단 키워드 자카드 유사도 임계값 (기본 0.6) | X |
 | `HISTORY_RETENTION_DAYS` | 발송 이력 보관 기간, 일 단위 (기본 90) | X |
+| `PAGES_BASE_URL` | 번역 전문 페이지가 배포되는 GitHub Pages 기본 URL | `full_translate` 사이트 사용 시 |
 
-일일 발송 한도(20건)와 카테고리 쿼터는 `.env`가 아니라 `source/data/sites.json`의
+일일 발송 한도(57건)와 카테고리 쿼터는 `.env`가 아니라 `source/data/sites.json`의
 `total_limit`/`quotas`로 관리한다.
 
 `.env`는 `.gitignore`에 포함되어 있어 커밋되지 않는다. 저장소에는 `source/.env.example`만 유지한다.
@@ -78,6 +85,18 @@ python3 main.py --dry-run          # Slack 발송/이력 저장 없이 콘솔에
 python3 main.py --force            # 중복 여부 무시하고 강제로 대상에 포함
 python3 main.py --limit 2          # 쿼터 선별 후 최종 건수를 N건으로 추가 제한
 ```
+
+## GitHub Pages 설정 (전문 번역 페이지용, 최초 1회)
+
+`full_translate: true`인 사이트(CNCF Blog)의 번역 전문 페이지는 이 저장소의 `docs/` 폴더에
+쌓이고 GitHub Pages로 배포된다. **저장소 Settings → Pages에서 Source를 "Deploy from a branch",
+Branch를 `main` / `docs`로 한 번 설정**해야 링크가 실제로 열린다 (API/CLI로 자동화하지 않았으니
+수동으로 켜야 함).
+
+또한 `main.py`가 실행되는 머신(개발 PC 또는 Raspberry Pi)에서 해당 저장소로 `git push`가
+비대화형으로 가능해야 한다 (SSH 배포 키 또는 자격증명이 캐시된 HTTPS PAT). push에 실패해도
+파이프라인은 중단되지 않고 Slack 발송은 계속 진행되지만, 그 경우 번역 페이지 링크는 push가
+성공할 때까지 404가 난다. GitHub Pages 빌드 자체도 push 후 반영까지 수십 초~1분 정도 걸릴 수 있다.
 
 ## 운영 배포 (Raspberry Pi + crontab)
 

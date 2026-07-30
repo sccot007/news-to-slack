@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
+REPO_ROOT = os.path.dirname(BASE_DIR)
+DOCS_DIR = os.path.join(REPO_ROOT, "docs")
+ARTICLES_DIR = os.path.join(DOCS_DIR, "articles")
 
 SITES_FILE = os.path.join(DATA_DIR, "sites.json")
 SENT_HISTORY_FILE = os.path.join(DATA_DIR, "sent_history.json")
@@ -31,3 +34,8 @@ HISTORY_RETENTION_DAYS = int(os.environ.get("HISTORY_RETENTION_DAYS", "90"))
 
 # HTTP 요청 타임아웃(초)
 REQUEST_TIMEOUT = 15
+
+# 전문 번역(full_translate) 페이지가 배포되는 GitHub Pages 기본 URL
+PAGES_BASE_URL = os.environ.get(
+    "PAGES_BASE_URL", "https://sccot007.github.io/news-to-slack"
+)

@@ -12,7 +12,8 @@ from config import SITES_FILE, ITEMS_PER_SITE
 from fetcher import fetch_rss, fetch_html
 from dedup import load_history, save_history, prune_old_entries, is_duplicate, make_entry
 from selector import select_candidates
-from summarizer import summarize_item
+from summarizer import summarize_item, translate_full_article
+import pages
 from notifier import send_digest
 
 
@@ -99,18 +100,53 @@ def main() -> int:
 
     new_items_by_site = {}
     newly_sent_entries = []
+    written_page_paths = []
 
     for candidate in selected:
         site = candidate["site"]
         item = candidate["item"]
 
-        enriched = summarize_item(item["title"], item.get("description", ""), site.get("lang", "ko"))
-        if "_error" in enriched:
-            log(f"[{site['id']}] 요약 실패, 원문으로 대체: {enriched['_error']}")
-        item_out = {**item, **enriched}
+        if site.get("full_translate"):
+            translated = translate_full_article(
+                item["title"], item.get("content_html", ""), site.get("lang", "ko")
+            )
+            if "_error" in translated:
+                log(f"[{site['id']}] 전문 번역 실패, 발췌로 대체: {translated['_error']}")
+
+            if args.dry_run:
+                page_url = pages.page_url_for(item["link"], item["title"])
+            else:
+                path, page_url = pages.write_page(
+                    item["title"],
+                    item["link"],
+                    translated["translated_title"],
+                    translated["translated_body"],
+                    site["name"],
+                    item.get("published_at"),
+                )
+                written_page_paths.append(path)
+
+            item_out = {
+                **item,
+                "display_title": translated["translated_title"],
+                "summary": translated["summary"],
+                "page_url": page_url,
+            }
+        else:
+            enriched = summarize_item(item["title"], item.get("description", ""), site.get("lang", "ko"))
+            if "_error" in enriched:
+                log(f"[{site['id']}] 요약 실패, 원문으로 대체: {enriched['_error']}")
+            item_out = {**item, **enriched}
 
         new_items_by_site.setdefault(site["name"], []).append(item_out)
         newly_sent_entries.append(make_entry(site["id"], item["title"], item["link"]))
+
+    if written_page_paths:
+        try:
+            pages.publish_pages(written_page_paths, len(written_page_paths))
+            log(f"번역 페이지 {len(written_page_paths)}건 git 배포 완료")
+        except RuntimeError as exc:
+            log(f"번역 페이지 git 배포 실패 (Slack은 정상 발송 진행): {exc}")
 
     send_digest(new_items_by_site, dry_run=args.dry_run)
 

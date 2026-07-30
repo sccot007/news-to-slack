@@ -54,6 +54,7 @@ def fetch_html(url: str, selectors: dict, limit: int) -> list[dict]:
                 "published": None,
                 "published_at": None,
                 "description": "",
+                "content_html": "",
             }
         )
     return items

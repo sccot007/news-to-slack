@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lima v2.2: Windows 게스트 및 TPM 2.0 에뮬레이션</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, sans-serif;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+    line-height: 1.7;
+    color: #1a1a1a;
+    background: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e6e6e6; background: #121212; }
+    a { color: #7db8ff; }
+    .meta { color: #999; }
+    .original-link { border-color: #333; }
+  }
+  h1 { font-size: 1.6rem; line-height: 1.4; margin-bottom: 0.5rem; }
+  .meta { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+  p { margin: 1.1em 0; }
+  .original-link {
+    display: inline-block;
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #ddd;
+  }
+  a { color: #0b66c3; }
+</style>
+</head>
+<body>
+<h1>Lima v2.2: Windows 게스트 및 TPM 2.0 에뮬레이션</h1>
+<div class="meta">CNCF Blog · 2026-07-29<br>이 페이지는 Gemini/Anthropic으로 자동 번역되었습니다.</div>
+<p>v2.1에서 macOS와 FreeBSD 게스트를 지원한 후, Lima v2.2는 다음 큰 도약을 이룹니다: Windows 게스트 지원입니다. 이번 릴리스로 단 하나의 `limactl` 워크플로우로 Linux, macOS, FreeBSD, Windows 가상 머신을 부팅할 수 있습니다. Lima v2.2는 또한 에뮬레이션 TPM(신뢰할 수 있는 플랫폼 모듈) 2.0을 도입하며, 이는 현대 게스트 운영체제와 디스크 암호화 워크플로우의 기초가 됩니다.</p>
+<p>Lima란 무엇인가?</p>
+<p>Lima(Linux Machines)는 로컬 가상 머신을 실행하기 위한 명령줄 도구입니다. 원래는 노트북에서 컨테이너를 실행하고 containerd를 Mac 사용자에게 보급하는 데 중점을 두었으나, 2022년 9월 CNCF에 샌드박스 프로젝트로 참여했고 2025년 10월 인큐베이팅 단계로 승격되었습니다. 오늘날 Lima는 다양한 비컨테이너 워크로드, 비macOS 호스트, 비Linux 게스트 및 강력한 AI 샌드박싱을 지원합니다.</p>
+<p>Homebrew를 사용하는 경우 Lima는 다음과 같이 설치할 수 있습니다:</p>
+<p>brew install lima</p>
+<p>다른 설치 방법은 https://lima-vm.io/docs/installation/ 을 참조하세요.</p>
+<p>v2.2의 업데이트</p>
+<p>Windows 게스트(실험 단계)</p>
+<p>Lima v2.2는 Windows Server 2025 및 Windows 11 게스트에 대한 실험적 지원을 도입합니다. v2.1에서 macOS와 FreeBSD를 추가한 후, Windows는 Lima를 OS에 구애받지 않는 VM 런처로 만드는 자연스러운 다음 단계였습니다.</p>
+<p>Windows Server 2025 게스트를 생성하고 시작하려면:</p>
+<p>limactl start template:windows-2025</p>
+<p>VM이 시작되면:</p>
+<p>limactl shell windows-2025</p>
+<p>내부적으로 Lima는 이제 다음을 수행할 수 있습니다:</p>
+<p>생성된 `autounattend.xml` 응답 파일로 무인 Windows 설치를 진행하고, 이를 QEMU가 설치 미디어와 함께 첨부하는 ISO로 패키징합니다. 이는 디스크 파티셔닝, 드라이버 로딩 및 사용자 생성을 수동 클릭 없이 처리합니다.</p>
+<p>virtio-win 드라이버 ISO를 다운로드하고 마운트하여 Windows가 virtio 블록, 네트워크 및 기타 반가상화 장치를 사용하여 우수한 성능을 얻을 수 있게 합니다.</p>
+<p>첫 로그온 시, PowerShell 스크립트는 무작위 암호를 생성하고(autounattend.xml의 초기 암호 대체), OpenSSH Server를 설치하고, Windows Firewall을 포트 22에 대해 열고, SSH 공개 키를 `C:\ProgramData\ssh\administrators_authorized_keys`에 주입하여 `limactl shell`이 바로 작동하도록 합니다.</p>
+<p>현재 제한 사항</p>
+<p>QEMU 드라이버만 지원됩니다.</p>
+<p>Windows 템플릿은 `plain: true`를 필요로 합니다. Linux 게스트 에이전트에 의존하는 파일 마운트, 게스트 에이전트를 통한 포트 포워딩 및 기타 Lima 편의 기능은 아직 사용할 수 없습니다.</p>
+<p>Windows 게스트의 향후 계획</p>
+<p>게스트로의 파일 공유(virtio-fs 또는 SMB(Server Message Block)를 통할 가능성).</p>
+<p>Windows 측 게스트 에이전트로, 포트 포워딩, 환경 전파 및 프로비저닝 스크립트가 Linux 게스트와 동일하게 작동합니다.</p>
+<p>더 광범위한 아키텍처 및 이미지 범위(Windows 11 ARM64, `en-us` 이외의 더 많은 언어 등).</p>
+<p>결국, Lima를 Windows에서 실행하는 사용자를 위한 기본 Windows HCS(Host Compute System) 백엔드 드라이버는 일급 vTPM을 제공합니다.</p>
+<p>TPM 2.0 에뮬레이션(실험 단계)</p>
+<p>TPM(신뢰할 수 있는 플랫폼 모듈) 2.0은 컴퓨터 마더보드에 내장되어 암호화 키를 사용하여 하드웨어를 보호하도록 설계된 전용 마이크로칩입니다. Windows 11 게스트를 가능하게 하기 위해 Lima v2.2는 QEMU 드라이버에서 swtpm(물리적 TPM처럼 작동하는 소프트웨어 에뮬레이터)을 통한 에뮬레이션 TPM도 추가합니다.</p>
+<p>`tpm: true`일 때, Lima는:</p>
+<p>인스턴스당 `swtpm` 프로세스를 생성하며, 인스턴스 디렉토리 아래에 자체 상태 디렉토리를 가집니다.</p>
+<p>Unix 도메인 소켓을 통해 `swtpm`과 통신합니다.</p>
+<p>아키텍처에 따라 올바른 QEMU TPM 장치를 선택합니다. 인스턴스가 중지될 때 `swtpm` 프로세스를 정리합니다.</p>
+<p>LFX 멘토십 2026</p>
+<p>올해 Lima는 LFX 멘토십 2026 Term 2 프로그램(6월~8월 2026)에 참여했으며, 이 기간은 현재 진행 중입니다. 작업은 우산 이슈 #4907 아래에서 추적됩니다. 우리는 이 기간의 선정된 멘티로 Mie Tokunaga(@mie313, GitHub)를 발표하게 되어 기쁩니다. Windows 게스트 개발을 주도한 그녀에게 감사합니다. 또한 `swtpm` 통합 #5079의 이전 개념 증명을 제공한 Arnav Sharma(@Shardz4, GitHub)에게도 감사드립니다.</p>
+<p>멘토십 프로그램의 주요 목표는 Windows 게스트 지원을 추가하는 것이었습니다. 이제 멘티가 성공적으로 구현했으므로, 초점은 Windows 호스트에서 원활한 Lima 경험을 보장하는 것으로 이동했습니다. 여기에는 Windows 호스트 구성 자동화 및 의존성 제거가 포함되어 Lima가 처음부터 &quot;작동&quot;하도록 합니다. 핵심 결과물은 `cygpath.exe` 의존성의 완전한 제거로, Lima on Windows가 더 이상 Cygwin, MSYS2 또는 Git for Windows를 설치할 필요가 없도록 합니다. 2차 단계는 Windows 호스트에 대한 네이티브 가상화 지원을 탐색하고 평가하는 것을 목표로 합니다. 여기에는 Hyper-V와 HCS(WSL2에서 사용됨) 간의 트레이드오프 조사가 포함됩니다.</p>
+<p>KubeCon + CloudNativeCon Japan 2026에서 만나요</p>
+<p>요코하마에서 &quot;안녕하세요!&quot;라고 말해주세요!</p>
+<p>컨퍼런스 세션: 프로젝트 라이트닝 토크: 5분 안에 알아보는 Lima: 컨테이너에서 AI 샌드박싱까지 – 스피커: Ansuman Sahoo(BITS Pilani) – 일시: 2026년 7월 29일 수요일 | 오후 12:33 JST – 장소: 3F | 313+314</p>
+<p>프로젝트 파빌리온 키오스크:</p>
+<p>– 일시: 2026년 7월 30일 목요일 | 오전 10:45 – 오후 1:00 JST</p>
+<p>– 장소: Level 3 | 301-304 + Foyer | T-3</p>
+<p>참조:</p>
+<p>&quot;Lima v2.1: macOS 게스트 및 향상된 AI 에이전트 안전성&quot;</p>
+<p>&quot;Lima v2.0: 보안 AI 워크플로우를 위한 새로운 기능&quot;</p>
+<div class="original-link"><a href="https://www.cncf.io/blog/2026/07/28/lima-v2-2-windows-guests-and-tpm-2-0-emulation/" target="_blank" rel="noopener">원문 보기 →</a></div>
+</body>
+</html>
