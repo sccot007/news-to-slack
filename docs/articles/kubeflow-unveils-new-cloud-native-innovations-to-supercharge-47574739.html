@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kubeflow, 클라우드 네이티브 혁신으로 AI를 한 단계 업그레이드하다</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, sans-serif;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+    line-height: 1.7;
+    color: #1a1a1a;
+    background: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e6e6e6; background: #121212; }
+    a { color: #7db8ff; }
+    .meta { color: #999; }
+    .original-link { border-color: #333; }
+  }
+  h1 { font-size: 1.6rem; line-height: 1.4; margin-bottom: 0.5rem; }
+  .meta { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+  p { margin: 1.1em 0; }
+  .original-link {
+    display: inline-block;
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #ddd;
+  }
+  a { color: #0b66c3; }
+</style>
+</head>
+<body>
+<h1>Kubeflow, 클라우드 네이티브 혁신으로 AI를 한 단계 업그레이드하다</h1>
+<div class="meta">CNCF Blog · 2026-07-28<br>이 페이지는 Gemini/Anthropic으로 자동 번역되었습니다.</div>
+<p>Kubecon + CloudNativeCon Japan 2026에서 발표된 Kubeflow의 소식은 여러 가지 중요한 기술 발전과 커뮤니티 주도 이니셔티브를 강조하고 있습니다.</p>
+<p>Kubeflow 프로젝트는 CNCF(Cloud Native Computing Foundation) 졸업을 향해 빠르게 진전되고 있으며, 성숙한 프로덕션 준비 ML 생태계로의 진화를 강조하고 있습니다. 이러한 추진력은 프로젝트 전반에 걸친 여러 개의 중요한 마일스톤으로 뒷받침되고 있습니다. 최근 기술 업데이트에는 Kale 2.0의 공식 통합과 Kubeflow SDK에 대한 상당한 개선이 포함됩니다. 동시에 새로운 Kubeflow Trainer는 Kubernetes에서 분산 AI 및 HPC(고성능 컴퓨팅) 워크로드를 위한 다음 단계로 위치하고 있습니다. 또한 Kubeflow Community Distribution 26.03 릴리스는 계속해서 플랫폼 전반에 걸친 상당한 개선 사항을 제공하고 있습니다.</p>
+<p>이러한 기술적 발전을 보완하면서 커뮤니티 참여가 프로젝트의 성장을 지원하기 위해 증가하고 있습니다. 새로 설립된 Outreach Program과 ML Experience Working Group은 채택을 증대하고 진입 장벽을 낮추는 데 초점을 맞춰 이러한 노력을 적극적으로 추진하고 있습니다. 이러한 협업을 더욱 촉진하기 위해 커뮤니티는 2026년 8월 19일 수요일에 개최될 예정인 가상 이벤트를 준비하고 있습니다.</p>
+<p>Kale은 공식적으로 Kubeflow 생태계의 일부가 되었습니다</p>
+<p>Kale(Kubeflow Automated pipeLines Engine)은 주석이 달린 Jupyter 노트북을 KFP SDK 코드를 한 줄도 작성하지 않고 프로덕션 준비가 된 Kubeflow Pipelines으로 변환합니다. Kale 2.0 릴리스를 통해 이 핵심 미션은 Kubeflow Pipelines v2(KFPv2) 아키텍처를 지원하도록 완전히 현대화되었습니다.</p>
+<p>Kale 릴리스 블로그에서 더 자세한 정보를 확인할 수 있습니다.</p>
+<p>Kubeflow Notebooks V2</p>
+<p>Kubeflow Notebooks는 차기 주요 버전인 v2의 릴리스를 앞두고 있습니다!</p>
+<p>Kubeflow Notebooks v2는 JupyterLab, RStudio, VS Code와 같은 대화형 AI/ML 환경을 Kubernetes에서 관리하기 위한 선언적 CRD(Custom Resource Definition) 기반 아키텍처를 도입한 완전히 새로운 설계입니다. 이는 플랫폼 팀에 템플릿 기반 노트북 환경 제어 기능을 제공하면서 데이터 과학자의 경험을 간소화합니다. 알파 릴리스가 오늘 제공되며, 팀은 프로덕션 준비가 된 GA(General Availability) 릴리스를 향해 적극적으로 추진 중입니다.</p>
+<p>더 자세한 내용은 FAQ를 참고하고, #kubeflow-notebooks Slack 채널에서 자기 소개를 하며, 주간 회의에 등록하시기 바랍니다. 참고: 충분한 관심이 있으면 아시아 타임존을 위한 회의를 개최할 예정입니다.</p>
+<p>Kubeflow 기술 업데이트</p>
+<p>Kubeflow SDK: 네이티브 Spark Connect 지원 + 간소화된 LLM 미세 조정</p>
+<p>Kubeflow SDK의 최신 릴리스는 대규모 엔드투엔드 AI 워크로드를 구축하기 위한 단일의 통합된 개발자 경험을 향한 큰 발걸음입니다. 이 릴리스에서 데이터 처리, 파이프라인 오케스트레이션, 분산 학습 및 하이퍼파라미터 튜닝이 모두 일관된 Python 인터페이스 아래 통합되어 별도의 도구를 함께 사용할 때의 마찰을 줄여줍니다.</p>
+<p>주요 추가 기능은 Kubernetes에서 인프라 구성을 작성하지 않고도 Spark를 실행할 수 있는 네이티브 Spark 지원입니다. 개발자는 데이터 탐색을 위한 대화형 Spark 세션을 시작하거나 대규모 배치 ETL 작업을 제출할 수 있습니다.</p>
+<p>또한 이 릴리스는 Kubeflow Pipelines 통합을 도입하여 파이프라인 작성부터 실행 및 모니터링까지의 전체 과정을 동일한 SDK에서 수행할 수 있게 합니다. 이러한 기능을 토대로 SDK는 LLM 미세 조정을 위한 내장 블루프린트를 통해 학습 후 기능을 계속해서 간소화하고 있습니다.</p>
+<p>향후 SDK는 계획된 OpenTelemetry 계측과 MLflow 실험 추적을 통한 일급 관찰성을 제공하여 팀이 AI 라이프사이클의 모든 단계에서 메트릭과 실행 기록에 대한 일관된 가시성을 확보할 수 있게 할 것입니다.</p>
+<p>Kubeflow Trainer: Kubernetes에서 분산 AI 및 HPC 워크로드를 위한 다음 단계</p>
+<p>새로운 Kubeflow Trainer는 Kubernetes에서 차세대 분산 AI 워크로드를 주도하도록 위치하고 있습니다. 원래 범위를 넘어 진화하면서 Kubeflow Trainer는 이제 MPI(Message Passing Interface) 지원을 통해 분산 AI 학습과 고성능 컴퓨팅 워크로드를 통합할 수 있게 합니다.</p>
+<p>커뮤니티는 또한 Trainer의 기능을 적극적으로 확장하고 있습니다. 새로운 OptimizationJob CRD를 통해 하이퍼파라미터 최적화 작업을 도입하는 제안이 진행 중이며, 이는 하이퍼파라미터 튜닝에 대한 Kubernetes 네이티브 접근 방식을 제공합니다. 또한 LLM 학습 후 보강 학습 워크로드를 지원하기 위한 작업이 진행 중이므로 사용자는 Kubeflow Trainer를 사용하여 Kubernetes에서 GRPO, PPO 및 기타 RL 방법과 같은 알고리즘을 원활하게 실행할 수 있게 됩니다.</p>
+<p>Kubeflow Community Distribution 26.03 릴리스 공지</p>
+<p>Kubeflow Community Distribution 26.03.1은 확장성, 보안 및 운영 효율성에 초점을 맞춘 상당한 플랫폼 개선 사항을 제공합니다. 이 릴리스는 네임스페이스당 오버헤드를 크게 줄이고, 멀티 테넌트 기본값을 강화하며, Kubernetes에서 대규모로 Kubeflow를 실행하기 위한 전반적인 안정성을 개선합니다.</p>
+<p>주요 플랫폼 업데이트:</p>
+<p>Kubernetes 지원: Kubernetes 1.34 이상에 대해 공식적으로 검증되었습니다.</p>
+<p>보안 개선: Kubeflow Pipelines v1 및 v2와 Pod Security Standards(PSS) Restricted 정책에 대한 호환성이 구현되어 더 엄격한 기본 보안 준수를 보장합니다.</p>
+<p>컴포넌트 업그레이드(26.03)</p>
+<p>이 릴리스에는 ML 라이프사이클 컴포넌트 전반에 걸친 주요 버전 업데이트가 포함됩니다:</p>
+<p>Kubeflow Pipelines: v2.16.0</p>
+<p>Spark Operator: v2.5.0</p>
+<p>Model Registry: v0.3.5</p>
+<p>릴리스 26.03.1</p>
+<p>최신 릴리스인 26.03.1 후속 릴리스는 다음을 포함한 추가 컴포넌트 업데이트로 이를 확장할 것입니다:</p>
+<p>Trainer: v2.2.0</p>
+<p>Dashboards: v2.0</p>
+<p>Notebooks: v1.11</p>
+<p>Notebook 2.0: 알파 릴리스</p>
+<p>KServe Web Application: v0.18.0</p>
+<p>더 알아보기: 전체 릴리스 노트, 배포 지침 및 전체 매니페스트는 공식 GitHub 저장소를 방문하세요: Kubeflow Manifests 26.03.01 Release</p>
+<p>Kubeflow는 졸업을 향해 나아가고 있습니다</p>
+<p>Kubeflow는 공식적으로 CNCF 졸업을 신청했으며 클라우드 네이티브 머신러닝을 위한 완전히 성숙한 프로덕션 준비 생태계로의 진화를 위해 노력하고 있습니다. 업데이트를 기대해 주세요.</p>
+<p>Kubeflow 커뮤니티 노력</p>
+<p>Kubeflow Outreach Program</p>
+<p>새로운 Outreach Program은 전담 멘토십, 교육 이니셔티브 및 기여자 옹호를 통해 글로벌 채택과 커뮤니티 성장을 촉진하기 위해 노력하고 있습니다. Outreach Program은 논의, 멘토십 및 커뮤니티 아웃리치를 위한 공개 월간 회의를 제공합니다. Outreach Program은 또한 기여자와 그들의 커뮤니티에 대한 영향을 기념하기 위해 월간 기여자 프로그램을 발표하고 있습니다. 자세한 정보는 여기를 참고하세요.</p>
+<p>다음 회의를 위해 달력을 확인하세요.</p>
+<p>Kubeflow ML Experience Working Group</p>
+<p>Machine Learning Experience Working Group은 사용자 인터페이스를 개선하고 Kubeflow SDK와 같은 엔드투엔드 데이터 과학 라이프사이클을 간소화함으로써 진입 장벽을 낮추는 데 초점을 맞추고 있습니다.</p>
+<p>Kubeflow Community Showcase 2026: 실전의 GenAI와 MLOps</p>
+<p>Kubeflow Community Showcase 2026은 Kubeflow 커뮤니티의 실제 사용 사례와 혁신을 선보이는 반일 가상 이벤트입니다. 업계 리더, 유지 관리자 및 커뮤니티 회원들과 함께 실용적인 솔루션, 데모 및 성공 사례를 살펴보세요. Kubeflow가 클라우드, 하이브리드 및 에지 환경에서 GenAI, MLOps 및 LLMOps를 지원하기 위해 어떻게 적용되는지에 대한 기술 심화 세션을 공유합니다.</p>
+<p>날짜: 8월 19일</p>
+<p>시간: 15:00 GMT</p>
+<p>추가 정보 및 등록: Kubeflow Community Showcase 2026 Event Page</p>
+<p>추가 커뮤니티 리소스</p>
+<p>Kubeflow Distribution Committee</p>
+<p>Kubeflow Ecosystem Process</p>
+<p>Kubeflow Subprojects Maturity Levels</p>
+<div class="original-link"><a href="https://www.cncf.io/blog/2026/07/28/kubeflow-unveils-new-cloud-native-innovations-to-supercharge-ai/" target="_blank" rel="noopener">원문 보기 →</a></div>
+</body>
+</html>
