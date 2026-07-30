@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Federating clusters for zero-downtime Kubernetes</title>
+<title>Linkerd로 Kubernetes 클러스터를 연합하여 무중단 운영 구현하기</title>
 <style>
   :root { color-scheme: light dark; }
   body {
@@ -34,272 +34,224 @@
 </style>
 </head>
 <body>
-<h1>Federating clusters for zero-downtime Kubernetes</h1>
+<h1>Linkerd로 Kubernetes 클러스터를 연합하여 무중단 운영 구현하기</h1>
 <div class="meta">CNCF Blog · 2026-07-27<br>이 페이지는 Gemini/Anthropic으로 자동 번역되었습니다.</div>
-<p>Every multi-region setup eventually meets the same awkward moment: a whole cluster goes away, and the identical copy of your service running two regions over might as well not exist, because nothing is wired to treat them as one thing. Failover becomes a runbook: restore, repoint DNS, and wait for an outage that, on paper, you’d already paid to survive.</p>
-<p>Linkerd’s multicluster extension closes that gap by letting several clusters present a service as a single, load-balanced endpoint. The part that the official tasks gloss over is that a real platform almost never picks one multicluster mode. Some services want federation (same service everywhere, one endpoint, automatic failover). While others want mirroring (reach a specific remote service by name). And you frequently want both patterns living on the same set of links. The docs walk through each mode on its own. This post wires all three together across three GKE clusters, with a full-mesh link topology, a chaos test that takes out an entire cluster, and scripts you can clone and run on a fresh GCP project.</p>
-<p>Companion repo : Every script referenced here lives in this repository . Feel free to clone it, set your project ID, and run it.</p>
-<p>Linkerd multicluster modes: Gateway, flat, and federated</p>
-<p>Linkerd’s multicluster extension supports three modes. The nice thing is they’re not mutually exclusive: on the same set of linked clusters, the mode is chosen per service via a label.</p>
-<p>The distinction that matters operationally is that hierarchical mirroring works on any network. Only the gateway IP needs to be reachable, while flat and federated modes need real pod-to-pod connectivity. On GCP, VPC-native GKE clusters on peered VPCs give you that flat network for free. So, you can run federated services for your core workloads over a flat network and still mirror a specialized service through a gateway from a cluster that isn’t on that network. Most platform teams I’ve seen end up with exactly this kind of mix.</p>
-<p>Multi-region architecture: GKE cluster setup</p>
-<p>We have three GKE clusters across three regions, fully linked to each other (six directional links total). Three demo services, each using a different multicluster mode:</p>
-<p>frontend is federated and runs in all three clusters. A single federated frontend service in each cluster load-balances across all nine pods (3 replicas × 3 clusters). When a cluster goes down, the remaining six pods absorb the traffic with no application changes.</p>
-<p>api is flat-mirrored and runs in ` west ` and ` east `. The ` north ` cluster consumes it as ` api-west ` and ` api-east `, which are explicit remote service names with traffic sent straight to the remote pods. This is what you reach for when the client needs to decide which backend it talks to, for example, to keep a request in-region for data locality.</p>
-<p>analytics is gateway-mirrored and runs only in ` east `. Exported through the Linkerd gateway so ` west ` and ` north ` reach it as ` analytics-east-gw ` without needing flat-network connectivity to ` east `’s pods. It’s here mainly to prove that gateway mode coexists with flat and federated modes on the same links.</p>
-<p>Deployment prerequisites: GKE, Linkerd, and CLI tools</p>
-<p>A GCP account (free-tier credits cover this. Use three standard clusters with small node pools)</p>
-<p>`gcloud` CLI, authenticated (`gcloud auth login`)</p>
-<p>`kubectl` v1.28+</p>
-<p>`step` CLI, `brew install step` (for certificate generation)</p>
+<p>모든 멀티리전 설정은 결국 같은 어색한 순간을 마주합니다. 전체 클러스터가 사라지고, 다른 리전에서 실행 중인 동일한 서비스 사본이 하나의 단위로 처리되지 않아 아무 소용이 없게 됩니다. 페일오버는 수동 작업이 됩니다. 복구하고, DNS를 재설정하고, 종이 위에서는 이미 비용을 지불했던 중단이 발생하기를 기다리는 것입니다.</p>
+<p>Linkerd의 멀티클러스터 확장 기능은 여러 클러스터가 서비스를 단일의 부하 분산 엔드포인트로 제시할 수 있게 함으로써 이 격차를 좁힙니다. 공식 문서가 자세히 설명하지 않는 부분은 실제 플랫폼이 거의 절대 단일 멀티클러스터 모드만 선택하지 않는다는 것입니다. 어떤 서비스는 연합(federation)을 원합니다(모든 곳에서 동일한 서비스, 하나의 엔드포인트, 자동 페일오버). 반면 다른 서비스는 미러링(이름으로 특정 원격 서비스에 도달)을 원합니다. 그리고 같은 연결 집합에서 두 패턴이 함께 존재하기를 원하는 경우가 많습니다. 공식 문서는 각 모드를 따로 다룹니다. 이 글은 세 개의 GKE 클러스터에서 세 가지 모드를 모두 함께 연결하고, 완전 메시 링크 토폴로지를 구성하며, 전체 클러스터를 제거하는 혼돈 테스트를 수행하고, 신규 GCP 프로젝트에서 복제 및 실행할 수 있는 스크립트를 제공합니다.</p>
+<p>동반 저장소: 여기서 참조되는 모든 스크립트는 이 저장소에 있습니다. 자유롭게 복제하고, 프로젝트 ID를 설정하고, 실행할 수 있습니다.</p>
+<p>Linkerd 멀티클러스터 모드: 게이트웨이, 플랫, 연합</p>
+<p>Linkerd의 멀티클러스터 확장 기능은 세 가지 모드를 지원합니다. 좋은 점은 이들이 상호 배타적이지 않다는 것입니다. 동일한 연결 클러스터 집합에서 모드는 레이블을 통해 서비스별로 선택됩니다.</p>
+<p>운영상 중요한 구분점은 계층적 미러링이 모든 네트워크에서 작동한다는 것입니다. 게이트웨이 IP에만 도달할 수 있으면 되지만, 플랫 및 연합 모드는 실제 파드 간(pod-to-pod) 연결이 필요합니다. GCP에서 피어링된 VPC의 VPC 네이티브 GKE 클러스터는 무료로 플랫 네트워크를 제공합니다. 따라서 플랫 네트워크를 통해 핵심 워크로드에 대해 연합 서비스를 실행하면서도 해당 네트워크에 없는 클러스터에서 게이트웨이를 통해 특수 서비스를 미러링할 수 있습니다. 제가 본 대부분의 플랫폼 팀은 정확히 이런 종류의 혼합으로 끝납니다.</p>
+<p>멀티리전 아키텍처: GKE 클러스터 설정</p>
+<p>세 리전에 걸쳐 세 개의 GKE 클러스터가 있으며, 모두 서로 완전히 연결되어 있습니다(총 6개의 방향성 링크). 세 개의 데모 서비스는 각각 다른 멀티클러스터 모드를 사용합니다:</p>
+<p>frontend는 연합되어 있으며 세 클러스터 모두에서 실행됩니다. 각 클러스터의 단일 연합 frontend 서비스는 9개의 파드(3개 복제본 × 3개 클러스터) 모두에 부하를 분산합니다. 클러스터가 중단되면 남은 6개의 파드가 애플리케이션 변경 없이 트래픽을 흡수합니다.</p>
+<p>api는 플랫 미러링되며 `west`와 `east`에서 실행됩니다. `north` 클러스터는 이를 `api-west`와 `api-east`로 소비합니다. 이는 명시적인 원격 서비스 이름이며 트래픽은 원격 파드로 직접 전송됩니다. 예를 들어, 데이터 지역성을 위해 요청을 리전 내에 유지해야 할 때 클라이언트가 어떤 백엔드와 통신할지 결정해야 하는 경우에 사용합니다.</p>
+<p>analytics는 게이트웨이 미러링되며 `east`에서만 실행됩니다. Linkerd 게이트웨이를 통해 내보내지므로 `west`와 `north`는 `east`의 파드에 대한 플랫 네트워크 연결이 없어도 `analytics-east-gw`로 접근할 수 있습니다. 게이트웨이 모드가 같은 링크의 플랫 및 연합 모드와 함께 존재함을 증명하기 위해 여기에 있습니다.</p>
+<p>배포 전제 조건: GKE, Linkerd, CLI 도구</p>
+<p>GCP 계정(무료 티어 크레딧으로 충분합니다. 작은 노드 풀을 가진 세 개의 표준 클러스터를 사용하세요)</p>
+<p>`gcloud` CLI, 인증됨(`gcloud auth login`)</p>
+<p>`kubectl` v1.28 이상</p>
+<p>`step` CLI, `brew install step`(인증서 생성용)</p>
 <p>`helm` v3</p>
-<p>~30 minutes for the full setup</p>
-<p>The infra script enables the `compute` and `container` APIs for you, so a brand-new project works out of the box.</p>
-<p>Step 0: Configure</p>
-<p>Clone the repo, create a local .env file from the example file, and customize it for your GCP project. The defaults are enough for the rest of the demo, so in most cases you only need to change the project ID.</p>
-<p>```bash
-git clone &lt;your-repo-url&gt;
+<p>전체 설정에 약 30분</p>
+<p>infra 스크립트가 `compute` 및 `container` API를 활성화하므로 완전히 새로운 프로젝트도 바로 작동합니다.</p>
+<p>Step 0: 구성</p>
+<p>저장소를 복제하고, 예제 파일에서 로컬 .env 파일을 만들고, GCP 프로젝트에 맞게 사용자 정의합니다. 기본값은 나머지 데모에 충분하므로 대부분의 경우 프로젝트 ID만 변경하면 됩니다.</p>
+<p>git clone &lt;your-repo-url&gt;
 cd blog-linkerd-federation
-cp env.example .env
-```</p>
-<p>Open `.env` and set at least your project ID. The file ships with sensible defaults for everything else:</p>
-<p>```bash
-export GCP_PROJECT=&quot;your-project-id&quot;</p>
+cp env.example .env</p>
+<p>`.env`를 열고 최소한 프로젝트 ID를 설정합니다. 파일은 다른 모든 것에 합리적인 기본값으로 제공됩니다:</p>
+<p>export GCP_PROJECT=&quot;your-project-id&quot;</p>
 <p>export REGION_WEST=&quot;us-central1&quot;
 export REGION_EAST=&quot;us-east1&quot;
 export REGION_NORTH=&quot;europe-west1&quot;</p>
-<p># One zone per region. We pin node-locations to a single zone so num-nodes is
-# the TOTAL node count — see the cost note below for why this matters.
+<p># 리전당 한 영역. 노드 위치를 단일 영역으로 고정하므로 num-nodes는
+# 총 노드 수입니다 — 비용 참고를 보세요.
 export ZONE_WEST=&quot;us-central1-a&quot;
 export ZONE_EAST=&quot;us-east1-b&quot;
 export ZONE_NORTH=&quot;europe-west1-b&quot;</p>
 <p>export CLUSTER_MACHINE_TYPE=&quot;e2-medium&quot;
 export CLUSTER_NODE_COUNT=&quot;1&quot;
-export FRONTEND_REPLICAS=&quot;3&quot;
-```</p>
-<p>At minimum, set GCP_PROJECT . Everything else ships with sensible defaults: three regions, one zone per region, and small node pools to keep the cost down. If you run cat .env, you should see the full set of variables populated.</p>
-<p>Load the variables into your current shell so the scripts can read them:</p>
-<p>```bash
-source .env
-```</p>
-<p>Every script below reads from this file, and they all run with `set -euo pipefail`, so a missing variable fails loudly rather than silently. That’s why `env.example` carries the full set, the VPC and cluster names included, instead of just the project ID.</p>
-<p>Step 1: Provision three GKE clusters with VPC peering</p>
-<p>Run the infrastructure script to create the networks and clusters. This takes about 10–15 minutes, so it’s a good point to grab a coffee.</p>
-<p>```bash
-./scripts/01-infra.sh
-```</p>
-<p>This script does the following:</p>
-<p>Enables the `compute` and `container` APIs (no-op if they’re already on).</p>
-<p>Creates three VPCs with non-overlapping pod and service CIDRs, a hard requirement for VPC peering.</p>
-<p>Sets up full-mesh VPC peering (west↔east, east↔north, north↔west) with `–export-custom-routes` and `–import-custom-routes` so pod CIDRs are actually advertised. This is what gives us the flat network.</p>
-<p>Creates three GKE Standard clusters , one per VPC/region, each pinned to a single zone.</p>
-<p>Renames the kubectl contexts to `west`, `east`, `north`.</p>
-<p>Here’s the address plan the script uses. The ranges are intentionally non-overlapping so VPC peering can route pod traffic correctly:</p>
-<p>Non-overlapping ranges are non-negotiable. If pod CIDRs overlap across peered VPCs, routing breaks silently. Pods get responses from the wrong cluster, or connections time out with nothing useful in the logs. Ask me how I know.</p>
-<p>One zone, not three . A GKE regional cluster places `–num-nodes` nodes in each of three zones by default. With `–num-nodes 1` that’s 3 nodes per cluster, 9 total, and triple the bill. The script pins `–node-locations` to a single zone so `CLUSTER_NODE_COUNT=1` really means one node per cluster.</p>
-<p>Cost note: Three Standard clusters with one `e2-medium` node each run roughly $10–15/day total for this demo (management fee + nodes + a small gateway load balancer on `east`). The teardown script removes everything.</p>
-<p>Step 2: Install Linkerd with a shared trust anchor</p>
-<p>Install Linkerd into all three clusters using a shared trust anchor. The script generates the certificates, installs the control plane, and configures each cluster to trust the others for cross-cluster mTLS.</p>
-<p>```bash
-./scripts/02-linkerd-install.sh
-```</p>
-<p>This generates a root CA and per-cluster issuer certificates, then installs Linkerd on all three clusters:</p>
-<p>```
-root.crt (shared trust anchor)
+export FRONTEND_REPLICAS=&quot;3&quot;</p>
+<p>최소한 GCP_PROJECT를 설정하세요. 나머지는 모두 합리적인 기본값으로 제공됩니다. 세 리전, 리전당 한 영역, 비용을 낮추기 위한 작은 노드 풀입니다. `cat .env`를 실행하면 모든 변수가 채워진 전체 집합을 볼 수 있어야 합니다.</p>
+<p>현재 셸에 변수를 로드하여 스크립트가 이를 읽을 수 있도록 합니다:</p>
+<p>source .env</p>
+<p>아래의 모든 스크립트는 이 파일에서 읽으며, 모두 `set -euo pipefail`로 실행되므로 누락된 변수는 조용히가 아니라 크게 실패합니다. 이것이 `env.example`이 프로젝트 ID뿐만 아니라 전체 변수 집합, VPC 및 클러스터 이름을 포함하는 이유입니다.</p>
+<p>Step 1: VPC 피어링을 사용하여 세 개의 GKE 클러스터 프로비저닝</p>
+<p>인프라 스크립트를 실행하여 네트워크와 클러스터를 만듭니다. 약 10~15분이 소요되므로 커피를 마실 좋은 시점입니다.</p>
+<p>./scripts/01-infra.sh</p>
+<p>이 스크립트는 다음을 수행합니다:</p>
+<p>`compute` 및 `container` API를 활성화합니다(이미 활성화되어 있으면 작동하지 않음).</p>
+<p>겹치지 않는 파드 및 서비스 CIDR을 가진 세 개의 VPC를 생성합니다. 이는 VPC 피어링의 필수 요구 사항입니다.</p>
+<p>완전 메시 VPC 피어링(west↔east, east↔north, north↔west)을 설정하며, 파드 CIDR이 실제로 광고되도록 `–export-custom-routes`와 `–import-custom-routes`를 사용합니다. 이것이 플랫 네트워크를 제공합니다.</p>
+<p>세 개의 GKE 표준 클러스터를 생성하며, VPC/리전당 하나씩, 각각 단일 영역에 고정됩니다.</p>
+<p>kubectl 컨텍스트를 `west`, `east`, `north`로 이름을 바꿉니다.</p>
+<p>스크립트가 사용하는 주소 계획입니다. 범위는 의도적으로 겹치지 않으므로 VPC 피어링이 파드 트래픽을 올바르게 라우팅할 수 있습니다:</p>
+<p>겹치지 않는 범위는 협상 불가능합니다. 피어링된 VPC 전체에서 파드 CIDR이 겹치면 라우팅이 조용히 깨집니다. 파드는 잘못된 클러스터에서 응답을 받거나, 연결이 로그에서 유용한 것이 없이 타임아웃됩니다. 제가 어떻게 알았는지 물어보세요.</p>
+<p>한 영역, 세 개가 아닙니다. GKE 리전 클러스터는 기본적으로 세 영역 각각에 `–num-nodes` 노드를 배치합니다. `–num-nodes 1`이면 클러스터당 3개 노드, 총 9개 노드이며 청구액이 3배입니다. 스크립트는 `–node-locations`을 단일 영역으로 고정하므로 `CLUSTER_NODE_COUNT=1`은 정말로 클러스터당 1개 노드를 의미합니다.</p>
+<p>비용 참고: 각각 `e2-medium` 노드 하나씩 있는 세 개의 표준 클러스터는 이 데모에서 전체적으로 대략 $10~15/일(관리 수수료 + 노드 + `east`의 작은 게이트웨이 로드 밸런서)을 실행합니다. teardown 스크립트가 모든 것을 제거합니다.</p>
+<p>Step 2: 공유 신뢰 앵커로 Linkerd 설치</p>
+<p>공유 신뢰 앵커를 사용하여 세 클러스터 모두에 Linkerd를 설치합니다. 스크립트는 인증서를 생성하고, 제어 평면을 설치하며, 각 클러스터가 교차 클러스터 mTLS에 대해 다른 클러스터를 신뢰하도록 구성합니다.</p>
+<p>./scripts/02-linkerd-install.sh</p>
+<p>이는 루트 CA 및 클러스터별 발급자 인증서를 생성한 후 세 클러스터 모두에 Linkerd를 설치합니다:</p>
+<p>root.crt (공유 신뢰 앵커)
 ├── issuer-west.crt + issuer-west.key
 ├── issuer-east.crt + issuer-east.key
 └── issuer-north.crt + issuer-north.key</p>
-<p>Per-cluster issuer certs are a production habit worth keeping: if one cluster’s issuer is compromised you rotate it in isolation, without touching the others. The shared root is what lets cross-cluster mTLS work at all. Every proxy can verify every other proxy’s identity back to the same anchor.</p>
-<p>To keep resource usage (and cost) down, this installs the control plane only with no Viz add-on.</p>
-<p>Step 3: Install multicluster and create a full-mesh link topology</p>
-<p>Set up the multicluster components and create a full-mesh topology between the clusters. After this step, every cluster can consume services from every other cluster.</p>
-<p>```bash
-./scripts/03-multicluster-setup.sh
-```</p>
-<p>This is the step with the most going on. We create six directional links, every cluster linked to every other cluster, so every cluster gets a `&lt;svc&gt;-federated` service for federated workloads, and every cluster can consume mirrored services from any other.</p>
-<p>The wrinkle is the gateway. Only `east` needs one (it’s the only cluster exporting `analytics` hierarchically), so we enable the gateway in east’s install and leave everyone else gatewayless. One install per cluster, all flags at once, no re-running install a second time to bolt a gateway on afterward:</p>
-<p>```bash
-# west: gatewayless, with one controller per cluster it consumes from
+<p>클러스터별 발급자 인증서는 생산 환경의 좋은 습관입니다. 한 클러스터의 발급자가 손상되면 다른 클러스터를 건드리지 않고 격리 상태에서 회전할 수 있습니다. 공유 루트는 교차 클러스터 mTLS가 작동할 수 있게 합니다. 모든 프록시는 동일한 앵커로 돌아가는 다른 모든 프록시의 신원을 검증할 수 있습니다.</p>
+<p>리소스 사용량(및 비용)을 낮게 유지하기 위해 이는 Viz 추가 기능 없이 제어 평면만 설치합니다.</p>
+<p>Step 3: 멀티클러스터 설치 및 완전 메시 링크 토폴로지 생성</p>
+<p>멀티클러스터 컴포넌트를 설정하고 클러스터 간 완전 메시 토폴로지를 생성합니다. 이 단계 후 모든 클러스터는 다른 모든 클러스터에서 서비스를 소비할 수 있습니다.</p>
+<p>./scripts/03-multicluster-setup.sh</p>
+<p>이것은 가장 많은 작업이 있는 단계입니다. 우리는 6개의 방향성 링크를 생성하며, 모든 클러스터가 다른 모든 클러스터에 연결되어 모든 클러스터가 연합 워크로드에 대해 `&lt;svc&gt;-federated` 서비스를 얻고, 모든 클러스터는 다른 클러스터에서 미러링된 서비스를 소비할 수 있습니다.</p>
+<p>까다로운 부분은 게이트웨이입니다. `east`만 필요합니다(이는 `analytics`를 계층적으로 내보내는 유일한 클러스터입니다). 따라서 우리는 east의 설치에서 게이트웨이를 활성화하고 다른 모든 클러스터는 게이트웨이 없이 둡니다. 클러스터당 하나의 설치, 모든 플래그를 한 번에, 나중에 게이트웨이를 추가하기 위해 설치를 다시 실행하지 않습니다:</p>
+<p># west: 게이트웨이 없음, 소비하는 각 클러스터당 하나의 컨트롤러
 linkerd --context west multicluster install --gateway=false \
   --set controllers[0].link.ref.name=east \
   --set controllers[1].link.ref.name=north \
   --set controllers[2].link.ref.name=east-gw \
   | kubectl --context west apply -f -</p>
-<p># east: gateway enabled here, controllers for the clusters it consumes
+<p># east: 여기서 게이트웨이 활성화, 소비하는 클러스터용 컨트롤러
 linkerd --context east multicluster install --gateway=true \
   --set controllers[0].link.ref.name=west \
   --set controllers[1].link.ref.name=north \
   | kubectl --context east apply -f -</p>
-<p># north: gatewayless, controllers for west, east, and east&#x27;s gateway link
+<p># north: 게이트웨이 없음, west, east, east의 게이트웨이 링크용 컨트롤러
 linkerd --context north multicluster install --gateway=false \
   --set controllers[0].link.ref.name=west \
   --set controllers[1].link.ref.name=east \
   --set controllers[2].link.ref.name=east-gw \
   | kubectl --context north apply -f -</p>
-<p>Note the controller count. The service-mirror controller runs on the consuming side, one per link. `west` and `north` each consume `analytics` via the gateway, so they get a third controller for the `east-gw` link; `east` doesn’t consume its own analytics, so it only needs two.</p>
-<p>Then we generate the links. Flat/federated links use `–gateway=false`; the gateway-aware link to `east` (for the analytics export) is a separate link named `east-gw`:</p>
-<p>```bash
-# Flat links (no gateway) — for federated + flat-mirrored services
+<p>컨트롤러 개수에 주목하세요. service-mirror 컨트롤러는 소비 측면에서 실행되며, 링크당 하나입니다. `west`와 `north`는 게이트웨이를 통해 `analytics`를 소비하므로 `east-gw` 링크에 대한 세 번째 컨트롤러를 얻습니다. `east`는 자신의 analytics를 소비하지 않으므로 2개만 필요합니다.</p>
+<p>그런 다음 링크를 생성합니다. 플랫/연합 링크는 `–gateway=false`를 사용합니다. `east`에 대한 게이트웨이 인식 링크(analytics 내보내기용)는 `east-gw`라고 명명된 별도의 링크입니다:</p>
+<p># 플랫 링크(게이트웨이 없음) — 연합 + 플랫 미러링 서비스용
 linkerd --context east multicluster link-gen --cluster-name=east --gateway=false \
   | kubectl --context west apply -f -
 linkerd --context west multicluster link-gen --cluster-name=west --gateway=false \
   | kubectl --context east apply -f -
-# ... (all six directions)</p>
-<p># Gateway-aware link from east (for the analytics hierarchical export)
+# ... (모든 6개 방향)</p>
+<p># east에서 게이트웨이 인식 링크(analytics 계층적 내보내기용)
 linkerd --context east multicluster link-gen --cluster-name=east-gw \
   | kubectl --context west apply -f -
 linkerd --context east multicluster link-gen --cluster-name=east-gw \
-  | kubectl --context north apply -f -
-```</p>
-<p>After this, `linkerd multicluster check` on any cluster should report every linked cluster healthy.</p>
-<p>Step 4: Deploy the demo services</p>
-<p>Deploy the demo workloads. The next sections label them for federation, flat mirroring, and gateway mirroring and show what each mode creates.</p>
-<p>```bash
-./scripts/04-deploy-app.sh
-```</p>
-<p>Three services, three modes, and deliberately the same `buoyantio/bb` image for all of them, a tiny HTTP server that echoes a fixed string. The application isn’t the point. The point is that one `kubectl label` changes how Linkerd treats the service across clusters, with everything else held constant.</p>
-<p>frontend (federated)</p>
-<p>Deploy to all three clusters with a per-cluster response string, then labeled for federation:</p>
-<p>```bash
-for ctx in west east north; do
+  | kubectl --context north apply -f -</p>
+<p>이 후 모든 클러스터에서 `linkerd multicluster check`는 연결된 모든 클러스터가 건강함을 보고해야 합니다.</p>
+<p>Step 4: 데모 서비스 배포</p>
+<p>데모 워크로드를 배포합니다. 다음 섹션에서 연합, 플랫 미러링, 게이트웨이 미러링에 대해 레이블을 지정하고 각 모드가 생성하는 것을 보여줍니다.</p>
+<p>./scripts/04-deploy-app.sh</p>
+<p>세 서비스, 세 모드, 그리고 의도적으로 모두에 동일한 `buoyantio/bb` 이미지를 사용합니다. 이는 고정 문자열을 에코하는 작은 HTTP 서버입니다. 애플리케이션은 포인트가 아닙니다. 포인트는 하나의 `kubectl label`이 다른 모든 것을 일정하게 유지하면서 Linkerd가 클러스터 전체에서 서비스를 어떻게 처리하는지를 변경한다는 것입니다.</p>
+<p>frontend (연합)</p>
+<p>리전별 응답 문자열로 세 클러스터 모두에 배포한 후 연합에 대해 레이블을 지정합니다:</p>
+<p>for ctx in west east north; do
   kubectl --context $ctx -n mc-demo label svc/frontend mirror.linkerd.io/federated=member
-done
-```</p>
-<p>Within a few seconds, `frontend-federated` shows up in all three clusters:</p>
-<p>```bash
-$ kubectl --context west -n mc-demo get svc
+done</p>
+<p>몇 초 내에 `frontend-federated`이 세 클러스터 모두에 나타납니다:</p>
+<p>$ kubectl --context west -n mc-demo get svc
 NAME                 TYPE        CLUSTER-IP     PORT(S)    AGE
 frontend             ClusterIP   10.104.1.50    8080/TCP   45s
-frontend-federated   ClusterIP   10.104.2.100   8080/TCP   10s
-```</p>
-<p>api (flat-mirrored)</p>
-<p>Label the api service in `west` and `east` for flat export:</p>
-<p>```bash
-kubectl --context west -n mc-demo label svc/api mirror.linkerd.io/exported=remote-discovery
-kubectl --context east -n mc-demo label svc/api mirror.linkerd.io/exported=remote-discovery
-```</p>
-<p>Now `north` can see `api-west` and `api-east` as separate services:</p>
-<p>```bash
-$ kubectl --context north -n mc-demo get svc
+frontend-federated   ClusterIP   10.104.2.100   8080/TCP   10s</p>
+<p>api (플랫 미러링)</p>
+<p>`west`와 `east`의 api 서비스에 플랫 내보내기용 레이블을 지정합니다:</p>
+<p>kubectl --context west -n mc-demo label svc/api mirror.linkerd.io/exported=remote-discovery
+kubectl --context east -n mc-demo label svc/api mirror.linkerd.io/exported=remote-discovery</p>
+<p>이제 `north`는 `api-west`와 `api-east`를 별도의 서비스로 볼 수 있습니다:</p>
+<p>$ kubectl --context north -n mc-demo get svc
 NAME                 TYPE        CLUSTER-IP      PORT(S)    AGE
 frontend             ClusterIP   10.120.1.50     8080/TCP   45s
 frontend-federated   ClusterIP   10.120.2.100    8080/TCP   10s
 api-west             ClusterIP   10.120.3.20     8080/TCP   5s
-api-east             ClusterIP   10.120.3.21     8080/TCP   5s
-```</p>
-<p>The client in `north` picks `api-west` or `api-east` explicitly. Traffic will go straight to the remote pods with no gateway in the path.</p>
-<p>analytics (gateway-mirrored)</p>
-<p>Next, deploy only to `east`, labeled for hierarchical (gateway) export:</p>
-<p>```bash
-kubectl --context east -n mc-demo label svc/analytics mirror.linkerd.io/exported=true
-```</p>
-<p>This creates `analytics-east-gw` in `west` and `north`, routed through east’s Linkerd gateway:</p>
-<p>```bash
-$ kubectl --context west -n mc-demo get svc analytics-east-gw
+api-east             ClusterIP   10.120.3.21     8080/TCP   5s</p>
+<p>`north`의 클라이언트는 `api-west` 또는 `api-east`를 명시적으로 선택합니다. 트래픽은 경로에 게이트웨이 없이 원격 파드로 직접 이동합니다.</p>
+<p>analytics (게이트웨이 미러링)</p>
+<p>다음으로, `east`에만 배포하고 계층적(게이트웨이) 내보내기용 레이블을 지정합니다:</p>
+<p>kubectl --context east -n mc-demo label svc/analytics mirror.linkerd.io/exported=true</p>
+<p>이것은 `west`와 `north`에서 `analytics-east-gw`를 생성하며, east의 Linkerd 게이트웨이를 통해 라우팅됩니다:</p>
+<p>$ kubectl --context west -n mc-demo get svc analytics-east-gw
 NAME               TYPE        CLUSTER-IP     PORT(S)    AGE
-analytics-east-gw  ClusterIP   10.104.5.10    8080/TCP   5s
-```</p>
-<p>The endpoints for this service point at east’s gateway IP, not the analytics pods directly. That’s the right trade when you can’t guarantee flat-network connectivity, or when you specifically want the gateway handling load balancing and mTLS termination.</p>
-<p>Step 5: Verify all three modes</p>
-<p>Generate traffic against all three service patterns and verify that each resolves the way you expect.</p>
-<p>```bash
-./scripts/05-verify.sh
-```</p>
-<p>This deploys a traffic generator in `north` that hits all three service patterns in a loop and tails the logs. The response strings come straight from the deployments, so you’ll see which cluster served each request:</p>
-<p>```
-[federated]  frontend from east
+analytics-east-gw  ClusterIP   10.104.5.10    8080/TCP   5s</p>
+<p>이 서비스의 엔드포인트는 analytics 파드가 아닌 east의 게이트웨이 IP를 가리킵니다. 이것은 플랫 네트워크 연결을 보장할 수 없거나, 게이트웨이가 부하 분산 및 mTLS 종료를 처리하기를 원할 때 올바른 선택입니다.</p>
+<p>Step 5: 세 가지 모드 모두 검증</p>
+<p>세 서비스 패턴 모두에 대해 트래픽을 생성하고 각각이 예상대로 해석되는지 확인합니다.</p>
+<p>./scripts/05-verify.sh</p>
+<p>이는 `north`에서 트래픽 생성기를 배포하여 루프에서 세 가지 서비스 패턴 모두에 대해 히트하고 로그를 추적합니다. 응답 문자열은 배포에서 직접 오므로 각 요청을 처리한 클러스터를 볼 수 있습니다:</p>
+<p>[federated]  frontend from east
 [federated]  frontend from west
 [federated]  frontend from north
 [flat-west]  api from west
 [flat-east]  api from east
-[gateway]    analytics from east
-```</p>
-<p>You can also inspect endpoints to see how differently each mode resolves:</p>
-<p>```bash
-# Federated: endpoints span all three clusters
+[gateway]    analytics from east</p>
+<p>또한 엔드포인트를 검사하여 각 모드가 얼마나 다르게 해석되는지 볼 수 있습니다:</p>
+<p># 연합: 엔드포인트는 세 클러스터 모두를 포함합니다
 $ linkerd --context west diagnostics endpoints frontend-federated.mc-demo.svc.cluster.local:8080
 NAMESPACE   IP            PORT   POD                        SERVICE
 mc-demo     10.100.1.15   8080   frontend-xxx-west          frontend.mc-demo
 mc-demo     10.108.0.42   8080   frontend-xxx-east          frontend.mc-demo
 mc-demo     10.116.0.33   8080   frontend-xxx-north         frontend.mc-demo</p>
-<p># Flat mirror: endpoints are the remote pod IPs
+<p># 플랫 미러: 엔드포인트는 원격 파드 IP입니다
 $ linkerd --context north diagnostics endpoints api-west.mc-demo.svc.cluster.local:8080
 NAMESPACE   IP            PORT   POD                        SERVICE
 mc-demo     10.100.2.10   8080   api-xxx-west               api.mc-demo</p>
-<p># Gateway mirror: the endpoint is east&#x27;s gateway IP on port 4143
+<p># 게이트웨이 미러: 엔드포인트는 포트 4143의 east의 게이트웨이 IP입니다
 $ kubectl --context west -n mc-demo get endpoints analytics-east-gw
 NAME               ENDPOINTS             AGE
-analytics-east-gw  35.186.xxx.xxx:4143   30s
-```</p>
-<p>Three modes, one mesh, one set of clusters, and the only difference between them is a label.</p>
-<p>Step 6: The chaos test, kill a cluster</p>
-<p>This is where federation earns its keep. We simulate a full cluster failure and watch how each service type reacts.</p>
-<p>```bash
-./scripts/06-chaos-test.sh
-```</p>
-<p>The script scales every deployment in `east` to zero replicas (standing in for a cluster outage), then samples traffic from `north` across all three patterns.</p>
-<p>Federated service (`frontend-federated`):</p>
-<p>```
-Before:  west=33% east=33% north=33%
-After:   west=50% north=50%              ← automatic rebalance, zero errors
-```</p>
-<p>Traffic redistributes immediately. No errors, no config changes. As east’s pods drop out of the endpoint list, Linkerd’s load balancer simply spreads requests across what’s left.</p>
-<p>Flat-mirrored service (`api-east`):</p>
-<p>```
-Before:  api-east responds normally
-After:   api-east returns 503s           ← expected: the remote pods are gone
-```</p>
-<p>This is the correct behavior. The client explicitly asked for `api-east`, and east is down. Handling that is the client’s job: fail over to `api-west`, retry, or front the two with a TrafficSplit. Mirroring hands you control; federation hands you automation.</p>
-<p>Gateway-mirrored service (`analytics-east-gw`):</p>
-<p>```
-Before:  analytics-east-gw responds normally
-After:   analytics-east-gw returns 502s  ← the gateway is down too
-```</p>
-<p>Same story here, the client asked for a specific remote, and that remote is gone.</p>
-<p>Bring east back:</p>
-<p>```bash
-kubectl --context east -n mc-demo scale deploy --all --replicas=1
-kubectl --context east -n mc-demo scale deploy/frontend --replicas=3
-```</p>
-<p>(The script restores `frontend` to its full `FRONTEND_REPLICAS` count rather than leaving it at 1, otherwise east would rejoin the federation under-weighted, landing around 14% instead of an even third.) Within 15–30 seconds all three patterns recover: the federated service rebalances back to 33/33/33, and the mirrored services start answering again.</p>
-<p>The lesson worth carrying out of this: federation is the right default for anything that should simply be available everywhere. Mirroring, flat or gateway, is the right call when the client genuinely needs to know which cluster it’s talking to.</p>
+analytics-east-gw  35.186.xxx.xxx:4143   30s</p>
+<p>세 모드, 하나의 메시, 하나의 클러스터 집합, 그리고 그들 사이의 유일한 차이는 레이블입니다.</p>
+<p>Step 6: 혼돈 테스트, 클러스터 제거</p>
+<p>이것이 연합이 가치를 발휘하는 곳입니다. 우리는 전체 클러스터 장애를 시뮬레이션하고 각 서비스 유형이 어떻게 반응하는지 관찰합니다.</p>
+<p>./scripts/06-chaos-test.sh</p>
+<p>스크립트는 `east`의 모든 배포를 0개 복제본으로 스케일링합니다(클러스터 중단을 의미함), 그 후 `north`에서 세 가지 패턴 모두를 통해 트래픽을 샘플링합니다.</p>
+<p>연합 서비스 (`frontend-federated`):</p>
+<p>Before:  west=33% east=33% north=33%
+After:   west=50% north=50%              ← 자동 리밸런스, 오류 없음</p>
+<p>트래픽은 즉시 재분배됩니다. 오류 없음, 구성 변경 없음. east의 파드가 엔드포인트 목록에서 빠지면 Linkerd의 부하 분산 장치는 단순히 요청을 남은 것들 전체에 분산시킵니다.</p>
+<p>플랫 미러링 서비스 (`api-east`):</p>
+<p>Before:  api-east responds normally
+After:   api-east returns 503s           ← 예상: 원격 파드는 없습니다</p>
+<p>이것이 정확한 동작입니다. 클라이언트가 명시적으로 `api-east`를 요청했고, east는 중단되었습니다. 이를 처리하는 것은 클라이언트의 역할입니다. `api-west`로 페일오버하고, 재시도하거나, TrafficSplit으로 두 개를 전면에 놓으세요. 미러링은 제어를 제공합니다. 연합은 자동화를 제공합니다.</p>
+<p>게이트웨이 미러링 서비스 (`analytics-east-gw`):</p>
+<p>Before:  analytics-east-gw responds normally
+After:   analytics-east-gw returns 502s  ← 게이트웨이도 중단됨</p>
+<p>동일한 이야기입니다. 클라이언트가 특정 원격을 요청했고, 그 원격은 없습니다.</p>
+<p>east를 다시 가져옵니다:</p>
+<p>kubectl --context east -n mc-demo scale deploy --all --replicas=1
+kubectl --context east -n mc-demo scale deploy/frontend --replicas=3</p>
+<p>(스크립트는 `frontend`를 전체 `FRONTEND_REPLICAS` 카운트로 복구합니다. 1로 두면 east가 저가중으로 연합에 다시 참여하게 되어 약 14% 대신 짝수 1/3을 착지합니다.) 15~30초 내에 세 가지 패턴 모두 복구됩니다. 연합 서비스는 33/33/33으로 다시 리밸런스되고, 미러링 서비스는 다시 응답하기 시작합니다.</p>
+<p>이 경험에서 빠져나올 가치 있는 교훈은 연합이 단순히 어디서나 이용 가능해야 하는 모든 것의 올바른 기본입니다. 미러링, 플랫 또는 게이트웨이는 클라이언트가 정말로 어느 클러스터와 통신하는지 알아야 할 때 올바른 선택입니다.</p>
 <p>Step 7: Teardown</p>
-<p>When you’re finished with the demo, run the teardown script to remove all the infrastructure and avoid ongoing GCP charges.</p>
-<p>```bash
-./scripts/99-teardown.sh
-```</p>
-<p>This removes all three clusters, the VPC peerings, subnets, firewall rules, and VPCs created by the earlier steps. Run it when you’re done so the meter stops.</p>
-<p>Selecting your Linkerd multicluster architecture strategy</p>
-<p>After running all three side by side, here’s the decision framework I’d hand a teammate:</p>
-<p>And you can mix them freely in the same mesh. The label on each service decides its behavior independently of the others.</p>
-<p>Linkerd multicluster gotchas and configuration lessons</p>
-<p>The gotchas that cost us time and don’t jump out of the docs:</p>
-<p>VPC peering route exchange. Creating the peering isn’t enough. You have to pass `–export-custom-routes` and `–import-custom-routes` on both sides, or the pod CIDRs never get advertised. The symptom is brutal to diagnose: DNS resolves fine, then connections just hang. Maddening to debug.</p>
-<p>Regional clusters multiply your nodes. A regional cluster with `–num-nodes 1` quietly gives you three nodes (one per zone). We pin `–node-locations` to a single zone to keep it at one. Easy to miss until the bill arrives.</p>
-<p>Overlapping CIDRs. GKE auto-allocates large ranges out of the `10.0.0.0/8` space by default, and three clusters built with defaults will overlap, at which point peering fails silently. Always set explicit, non-overlapping `–cluster-ipv4-cidr` and `–services-ipv4-cidr`.</p>
-<p>Controller count matters. Each cluster needs one service-mirror controller per link it consumes. Miss one and the Link CR is created, but nothing mirrors, and `linkerd multicluster check` still looks green, so you’ll stare at it for a while before the penny drops.</p>
-<p>Federated service naming is fixed. The federated service is always `&lt;svc&gt;-federated`; you can’t change the suffix. Clients have to target `frontend-federated`, not `frontend`. Plan your naming around it, or use a TrafficSplit to point `frontend` at `frontend-federated`.</p>
-<p>Gateway and flat can’t share one link. A single Link CR is either gateway or flat, not both. To get both behaviors to the same cluster you create two links with different names. That’s why our setup uses `east` (flat) and `east-gw` (gateway) as separate links, with a matching controller for each on the consuming clusters.</p>
-<p>Production checklist</p>
-<p>Bidirectional links between all clusters (full mesh) so every cluster has the federated service</p>
-<p>cert-manager with a shared CA instead of hand-rolled `step` certificates</p>
-<p>Separate issuer certs per cluster (don’t skip it!)</p>
-<p>NetworkPolicies restricting cross-cluster traffic to only the services that need it</p>
-<p>Linkerd authorization policies for fine-grained access control</p>
-<p>Monitoring : pipe Linkerd-Viz metrics into your Prometheus/Grafana stack, and alert on a federated service’s endpoint count dropping</p>
-<p>GitOps : keep Link CRs and multicluster config in version control</p>
-<p>Test failover regularly : scale a cluster to zero in staging and confirm traffic redistributes</p>
-<p>Key takeaways: Mastering multi-region Linkerd deployments</p>
-<p>The docs show each multicluster mode in isolation; real platforms need all three at once. Federation covers the common case: The same service everywhere, automatic failover, and nothing to change in the app. Flat mirrors give you explicit, cluster-aware routing when data locality matters. Gateway mirrors get you cross-cluster reach when a flat network isn’t on the table.</p>
-<p>What surprised me most about building this is how little of it is genuinely complex. It’s mostly wiring. Once the trust anchor is shared and the links are up, adding a service to the federation is a single `kubectl label`, and removing a cluster is as simple as letting it go down. The mesh adjusts on its own.</p>
-<p>For teams running across regions, that’s a real chunk of operational toil gone: your services run everywhere, traffic finds the healthy copies, and you pick the multicluster mode per service based on what that service actually needs.</p>
-<p>References:</p>
-<p>– [Linkerd Federated Services Task Guide]( https://linkerd.io/2-edge/tasks/federated-services/ ): official walkthrough for federation</p>
-<p>– [Linkerd Multicluster Reference]( https://linkerd.io/2-edge/reference/multicluster/ ): architecture and mode details</p>
-<p>– [Linkerd Multicluster Communication Guide]( https://linkerd.io/2-edge/tasks/multicluster/ ): hierarchical mirroring walkthrough</p>
-<p>– [Installing Multicluster Components]( https://linkerd.io/2-edge/tasks/installing-multicluster/ ): installation reference</p>
-<p>– [Linkerd 2.17 Announcement]( https://linkerd.io/2024/12/05/announcing-linkerd-2.17/ ): federated services introduction</p>
-<p>– [GKE VPC-native Clusters]( https://docs.cloud.google.com/kubernetes-engine/docs/concepts/alias-ips ): flat networking on GCP</p>
+<p>데모 완료 후, teardown 스크립트를 실행하여 모든 인프라를 제거하고 지속적인 GCP 청구를 방지합니다.</p>
+<p>./scripts/99-teardown.sh</p>
+<p>이는 이전 단계에서 생성한 세 개의 클러스터, VPC 피어링, 서브넷, 방화벽 규칙, VPC를 모두 제거합니다. 완료되면 실행하여 미터가 멈추도록 하세요.</p>
+<p>Linkerd 멀티클러스터 아키텍처 전략 선택</p>
+<p>세 가지를 나란히 실행한 후, 팀 동료에게 전달할 의사 결정 프레임워크는 다음과 같습니다:</p>
+<p>그리고 같은 메시에서 이들을 자유롭게 혼합할 수 있습니다. 각 서비스의 레이블이 다른 서비스와 무관하게 그 동작을 결정합니다.</p>
+<p>Linkerd 멀티클러스터 함정 및 구성 교훈</p>
+<p>문서에서 튀어나오지 않는 시간과 비용이 드는 함정:</p>
+<p>VPC 피어링 경로 교환. 피어링을 만드는 것만으로는 충분하지 않습니다. 양쪽에서 `–export-custom-routes`와 `–import-custom-routes`를 전달해야 하거나 파드 CIDR이 절대 광고되지 않습니다. 증상은 진단하기가 잔인합니다. DNS는 잘 해석되지만 연결은 그냥 중단됩니다. 디버깅하기에 미치겠습니다.</p>
+<p>리전 클러스터는 노드를 곱합니다. `–num-nodes 1`이 있는 리전 클러스터는 조용히 3개 노드(영역당 하나)를 제공합니다. 이는 클러스터당 3개 노드, 총 9개, 청구액이 3배입니다. 스크립트는 `–node-locations`을 단일 영역으로 고정하여 하나로 유지합니다. 청구서가 도착할 때까지 놓치기 쉽습니다.</p>
+<p>겹치는 CIDR. GKE는 기본적으로 `10.0.0.0/8` 공간에서 큰 범위를 자동으로 할당하며, 기본값으로 빌드된 세 개의 클러스터는 겹치고, 그 시점에서 피어링이 조용히 실패합니다. 항상 명시적이고 겹치지 않는 `–cluster-ipv4-cidr`과 `–services-ipv4-cidr`을 설정하세요.</p>
+<p>컨트롤러 개수는 중요합니다. 각 클러스터는 소비하는 링크당 하나의 service-mirror 컨트롤러가 필요합니다. 하나를 놓치면 Link CR이 생성되지만 아무것도 미러링되지 않으며, `linkerd multicluster check`는 여전히 녹색으로 보이므로 한동안 그것을 바라볼 것입니다.</p>
+<p>연합 서비스 이름은 고정됩니다. 연합 서비스는 항상 `&lt;svc&gt;-federated`입니다. 접미사를 변경할 수 없습니다. 클라이언트는 `frontend`가 아닌 `frontend-federated`를 대상으로 해야 합니다. 이를 중심으로 이름을 계획하거나, TrafficSplit을 사용하여 `frontend`가 `frontend-federated`를 가리키도록 하세요.</p>
+<p>게이트웨이와 플랫은 하나의 링크를 공유할 수 없습니다. 단일 Link CR은 게이트웨이 또는 플랫이며, 둘 다는 아닙니다. 같은 클러스터에 두 동작을 모두 얻으려면 다른 이름을 가진 두 개의 링크를 생성합니다. 이것이 우리의 설정이 `east`(플랫)와 `east-gw`(게이트웨이)를 별도의 링크로 사용하고, 소비 클러스터의 각각에 대해 일치하는 컨트롤러를 가지는 이유입니다.</p>
+<p>생산 체크리스트</p>
+<p>모든 클러스터 간 양방향 링크(완전 메시)이므로 모든 클러스터가 연합 서비스를 가집니다</p>
+<p>hand-rolled `step` 인증서 대신 공유 CA가 있는 cert-manager</p>
+<p>클러스터당 별도의 발급자 인증서(건너뛰지 마세요!)</p>
+<p>교차 클러스터 트래픽을 필요한 서비스만으로 제한하는 NetworkPolicies</p>
+<p>미세한 액세스 제어를 위한 Linkerd 인증 정책</p>
+<p>모니터링: Linkerd-Viz 메트릭을 Prometheus/Grafana 스택으로 파이프하고, 연합 서비스의 엔드포인트 개수 감소를 알립니다</p>
+<p>GitOps: Link CR 및 멀티클러스터 구성을 버전 제어에 유지합니다</p>
+<p>정기적으로 페일오버를 테스트합니다: 스테이징에서 클러스터를 0으로 스케일링하고 트래픽이 재분배되는지 확인합니다</p>
+<p>주요 요약: 멀티리전 Linkerd 배포 마스터하기</p>
+<p>문서는 각 멀티클러스터 모드를 격리 상태에서 보여줍니다. 실제 플랫폼은 세 가지 모두 한 번에 필요합니다. 연합은 일반적인 경우를 다룹니다. 모든 곳에서 동일한 서비스, 자동 페일오버, 앱에서 변경할 것이 없음입니다. 플랫 미러는 데이터 지역성이 중요할 때 명시적이고 클러스터 인식 라우팅을 제공합니다. 게이트웨이 미러는 플랫 네트워크가 테이블에 없을 때 교차 클러스터 도달을 가능하게 합니다.</p>
+<p>제가 이것을 빌드하는 것에 대해 가장 놀랐던 것은 진정으로 복잡한 것이 얼마나 적은지입니다. 대부분 배선입니다. 신뢰 앵커가 공유되고 링크가 작동되면, 연합에 서비스를 추가하는 것은 단일 `kubectl label`이며, 클러스터 제거는 단순히 그것을 사라지도록 놔두는 것만큼 간단합니다. 메시는 자동으로 조정됩니다.</p>
+<p>리전 전체에서 실행되는 팀의 경우, 이는 진정한 운영 노고의 일부가 사라지는 것입니다. 서비스는 모든 곳에서 실행되고, 트래픽은 건강한 사본을 찾으며, 서비스 기반 멀티클러스터 모드를 선택합니다.</p>
+<p>참고:</p>
+<p>– Linkerd Federated Services Task Guide: 연합에 대한 공식 연습
+– Linkerd Multicluster Reference: 아키텍처 및 모드 세부사항
+– Linkerd Multicluster Communication Guide: 계층적 미러링 연습
+– Installing Multicluster Components: 설치 참고사항
+– Linkerd 2.17 Announcement: 연합 서비스 소개
+– GKE VPC-native Clusters: GCP의 플랫 네트워킹</p>
 <div class="original-link"><a href="https://www.cncf.io/blog/2026/07/27/federating-clusters-for-zero-downtime-kubernetes/" target="_blank" rel="noopener">원문 보기 →</a></div>
 </body>
 </html>
