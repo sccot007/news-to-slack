@@ -4,7 +4,11 @@ Gemini를 우선 호출하고, 실패하면 Anthropic으로 폴백한다.
 영문 기사는 "번역 제목 (원제)" 형식으로, 한국어 기사는 원제를 그대로 표시한다.
 
 `translate_full_article`은 full_translate 사이트(예: CNCF Blog)를 위한 전문(全文) 번역용으로,
-같은 Gemini→Anthropic 폴백 구조를 사용하되 훨씬 큰 max_tokens로 호출한다.
+같은 Gemini→Anthropic 폴백 구조를 사용하되 훨씬 큰 max_tokens로 호출한다. 번역된 본문은 길고
+코드/경로/따옴표 등 임의 문자를 포함하기 쉬워, JSON 문자열 이스케이핑에 의존하면 모델이
+백슬래시를 잘못 이스케이프하거나 응답이 토큰 한도에서 잘릴 때 파싱이 깨지기 쉽다. 그래서
+번역 결과는 JSON이 아니라 `TITLE:`/`SUMMARY:`/`---BODY---` 구분자 기반의 평문으로 받는다
+(짧은 summarize_item은 기존 JSON 방식을 그대로 쓴다 — 한 줄짜리라 문제가 없었다).
 """
 import json
 import re
@@ -23,13 +27,16 @@ ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 
 SUMMARY_MAX_TOKENS = 300
-FULL_TRANSLATE_MAX_TOKENS = 8192
+FULL_TRANSLATE_MAX_TOKENS = 16000
 
 # 짧은 요약은 REQUEST_TIMEOUT(15초)로 충분하지만, 전문 번역은 응답 토큰이 훨씬 많아
 # 생성 시간이 길어지므로 별도로 넉넉한 타임아웃을 둔다.
-FULL_TRANSLATE_TIMEOUT = 120
+FULL_TRANSLATE_TIMEOUT = 150
 
 _JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)
+_TITLE_RE = re.compile(r"^TITLE:\s*(.+)$", re.MULTILINE)
+_SUMMARY_RE = re.compile(r"^SUMMARY:\s*(.+)$", re.MULTILINE)
+_BODY_MARKER = "---BODY---"
 
 
 def _build_prompt(title: str, description: str, lang: str) -> str:
@@ -62,18 +69,17 @@ def _extract_paragraphs(content_html: str) -> str:
 def _build_translate_prompt(title: str, content_html: str, lang: str) -> str:
     body_text = _extract_paragraphs(content_html)
     return (
-        "다음은 기술 블로그 글의 원문이다. 한국어로 자연스럽게 전문 번역해줘. "
-        "아래 JSON 형식으로만 응답하고, 다른 설명이나 코드블록 없이 순수 JSON만 출력해. "
-        "JSON 문자열 안의 줄바꿈은 반드시 \\n으로 이스케이프해.\n\n"
+        "다음은 기술 블로그 글의 원문이다. 한국어로 자연스럽게 전문 번역해줘.\n"
+        "아래 형식을 정확히 지켜서 응답해. 이 세 마커(TITLE:, SUMMARY:, ---BODY---) 외의 "
+        "설명이나 코드블록(```)은 절대 추가하지 마. JSON이 아니라 순수 텍스트로 출력해.\n\n"
+        "TITLE: <원문 제목을 자연스러운 한국어로 번역한 한 줄>\n"
+        "SUMMARY: <핵심 내용을 한국어로 100자 이내 요약한 한 줄>\n"
+        f"{_BODY_MARKER}\n"
+        "<본문 전체를 문단 구분(빈 줄)을 유지하며 한국어로 번역. 기술 용어/고유명사는 필요하면 "
+        "괄호로 원어를 병기. 코드/명령어/경로/URL은 원문 그대로 유지>\n\n"
         f"원문 제목: {title}\n"
         f"원문 언어: {lang}\n"
-        f"원문 본문:\n{body_text}\n\n"
-        "요구사항:\n"
-        "- translated_title: 원문 제목을 자연스러운 한국어로 번역\n"
-        "- translated_body: 본문 전체를 문단 구분(빈 줄 \\n\\n)을 유지하며 한국어로 번역. "
-        "기술 용어/고유명사는 필요하면 괄호로 원어를 병기\n"
-        "- summary: 핵심 내용을 한국어로 100자 이내 요약\n\n"
-        '출력 형식 예시: {"translated_title": "...", "translated_body": "...", "summary": "..."}'
+        f"원문 본문:\n{body_text}"
     )
 
 
@@ -88,9 +94,22 @@ def _parse_json_response(text: str, required_fields: tuple[str, ...]) -> dict:
     return data
 
 
-def _call_gemini(
-    prompt: str, required_fields: tuple[str, ...], max_output_tokens: int, timeout: int
-) -> dict:
+def _parse_translate_response(text: str) -> dict:
+    title_match = _TITLE_RE.search(text)
+    summary_match = _SUMMARY_RE.search(text)
+    if _BODY_MARKER not in text:
+        raise ValueError(f"{_BODY_MARKER} 마커를 찾을 수 없음: {text[:200]!r}")
+    body = text.split(_BODY_MARKER, 1)[1].strip()
+    if not title_match or not summary_match or not body:
+        raise ValueError(f"응답 형식이 예상과 다름(TITLE/SUMMARY 누락 등): {text[:200]!r}")
+    return {
+        "translated_title": title_match.group(1).strip(),
+        "summary": summary_match.group(1).strip(),
+        "translated_body": body,
+    }
+
+
+def _call_gemini_raw(prompt: str, max_output_tokens: int, timeout: int) -> str:
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY가 설정되지 않음")
     response = requests.post(
@@ -104,13 +123,10 @@ def _call_gemini(
     )
     response.raise_for_status()
     data = response.json()
-    text = data["candidates"][0]["content"]["parts"][0]["text"]
-    return _parse_json_response(text, required_fields)
+    return data["candidates"][0]["content"]["parts"][0]["text"]
 
 
-def _call_anthropic(
-    prompt: str, required_fields: tuple[str, ...], max_tokens: int, timeout: int
-) -> dict:
+def _call_anthropic_raw(prompt: str, max_tokens: int, timeout: int) -> str:
     if not ANTHROPIC_API_KEY:
         raise RuntimeError("ANTHROPIC_API_KEY가 설정되지 않음")
     response = requests.post(
@@ -129,18 +145,16 @@ def _call_anthropic(
     )
     response.raise_for_status()
     data = response.json()
-    text = data["content"][0]["text"]
-    return _parse_json_response(text, required_fields)
+    return data["content"][0]["text"]
 
 
-def _call_with_fallback(
-    prompt: str, required_fields: tuple[str, ...], max_tokens: int, timeout: int = REQUEST_TIMEOUT
-) -> dict:
+def _call_with_fallback(prompt: str, parse, max_tokens: int, timeout: int = REQUEST_TIMEOUT) -> dict:
+    """Gemini를 먼저 호출하고 실패하면 Anthropic으로 폴백한다. `parse`는 raw text -> dict 변환 함수."""
     try:
-        return _call_gemini(prompt, required_fields, max_tokens, timeout)
+        return parse(_call_gemini_raw(prompt, max_tokens, timeout))
     except Exception as gemini_exc:  # noqa: BLE001 - LLM 실패는 폴백으로 흡수
         try:
-            return _call_anthropic(prompt, required_fields, max_tokens, timeout)
+            return parse(_call_anthropic_raw(prompt, max_tokens, timeout))
         except Exception as anthropic_exc:  # noqa: BLE001
             raise RuntimeError(f"gemini={gemini_exc}; anthropic={anthropic_exc}") from anthropic_exc
 
@@ -148,8 +162,9 @@ def _call_with_fallback(
 def summarize_item(title: str, description: str, lang: str) -> dict:
     """{"display_title": str, "summary": str} 반환. 둘 다 실패하면 원문 기반 기본값 반환."""
     prompt = _build_prompt(title, description, lang)
+    parse = lambda text: _parse_json_response(text, ("display_title", "summary"))
     try:
-        return _call_with_fallback(prompt, ("display_title", "summary"), SUMMARY_MAX_TOKENS)
+        return _call_with_fallback(prompt, parse, SUMMARY_MAX_TOKENS)
     except RuntimeError as exc:
         return {
             "display_title": title,
@@ -166,9 +181,10 @@ def translate_full_article(title: str, content_html: str, lang: str) -> dict:
     둘 다 실패하면 원문 그대로를 담은 기본값을 반환한다 (호출부가 "_error" 유무로 실패를 감지).
     """
     prompt = _build_translate_prompt(title, content_html, lang)
-    required = ("translated_title", "translated_body", "summary")
     try:
-        return _call_with_fallback(prompt, required, FULL_TRANSLATE_MAX_TOKENS, FULL_TRANSLATE_TIMEOUT)
+        return _call_with_fallback(
+            prompt, _parse_translate_response, FULL_TRANSLATE_MAX_TOKENS, FULL_TRANSLATE_TIMEOUT
+        )
     except RuntimeError as exc:
         body_text = _extract_paragraphs(content_html) or title
         return {
