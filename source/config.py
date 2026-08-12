@@ -30,7 +30,9 @@ ITEMS_PER_SITE = int(os.environ.get("ITEMS_PER_SITE", "10"))
 DEDUP_KEYWORD_THRESHOLD = float(os.environ.get("DEDUP_KEYWORD_THRESHOLD", "0.6"))
 
 # 발송 이력 보관 기간 (일). 이보다 오래된 이력은 정리한다.
-HISTORY_RETENTION_DAYS = int(os.environ.get("HISTORY_RETENTION_DAYS", "90"))
+# ARTICLES_RETENTION_DAYS와 값을 맞춰둔다 — 다르면 번역 페이지는 지워졌는데 이력만 남아
+# 재발송이 막히는(혹은 그 반대) 어긋남이 생길 수 있다.
+HISTORY_RETENTION_DAYS = int(os.environ.get("HISTORY_RETENTION_DAYS", "30"))
 
 # HTTP 요청 타임아웃(초)
 REQUEST_TIMEOUT = 15

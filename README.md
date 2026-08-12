@@ -72,7 +72,7 @@ Raspberry Pi OS/Debian에는 기본 포함되어 있고, 없으면 `apt install 
 | `ANTHROPIC_API_KEY` | Gemini 실패 시 폴백으로 사용할 Anthropic API 키 | 권장 |
 | `ITEMS_PER_SITE` | 사이트별로 확인할 최신 글 후보 개수 (기본 10) | X |
 | `DEDUP_KEYWORD_THRESHOLD` | 중복 판단 키워드 자카드 유사도 임계값 (기본 0.6) | X |
-| `HISTORY_RETENTION_DAYS` | 발송 이력 보관 기간, 일 단위 (기본 90) | X |
+| `HISTORY_RETENTION_DAYS` | 발송 이력 보관 기간, 일 단위 (기본 30, `ARTICLES_RETENTION_DAYS`와 동일하게 유지) | X |
 | `PAGES_BASE_URL` | 번역 전문 페이지가 배포되는 GitHub Pages 기본 URL | `full_translate` 사이트 사용 시 |
 
 일일 발송 한도(57건)와 카테고리 쿼터는 `.env`가 아니라 `source/data/sites.json`의
