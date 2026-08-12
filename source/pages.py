@@ -9,9 +9,10 @@ import html
 import os
 import re
 import subprocess
+import time
 from datetime import datetime, timezone
 
-from config import ARTICLES_DIR, PAGES_BASE_URL, REPO_ROOT
+from config import ARTICLES_DIR, ARTICLES_RETENTION_DAYS, PAGES_BASE_URL, REPO_ROOT
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
@@ -118,16 +119,43 @@ def write_page(
     return path, page_url_for(original_link, original_title)
 
 
-def publish_pages(paths: list[str], count: int) -> None:
-    """새로 쓴 페이지들을 git add/commit/push한다.
+def list_stale_pages(retention_days: int = ARTICLES_RETENTION_DAYS) -> list[str]:
+    """retention_days보다 오래된(파일 수정시각 기준) 페이지 경로 목록을 반환한다. 삭제는 하지 않는다."""
+    if not os.path.isdir(ARTICLES_DIR):
+        return []
+    cutoff = time.time() - retention_days * 86400
+    return [
+        os.path.join(ARTICLES_DIR, name)
+        for name in os.listdir(ARTICLES_DIR)
+        if name.endswith(".html") and os.path.getmtime(os.path.join(ARTICLES_DIR, name)) < cutoff
+    ]
+
+
+def prune_old_pages(retention_days: int = ARTICLES_RETENTION_DAYS) -> list[str]:
+    """retention_days보다 오래된 페이지를 로컬에서 삭제하고 삭제된 경로 목록을 반환한다.
+
+    git add/commit/push는 하지 않는다 (publish_pages가 처리). 파일 수정시각(mtime)을 기준으로 판단하므로,
+    저장소를 새로 clone하는 경우처럼 mtime이 초기화되는 상황에서는 실제보다 "최신"으로 오판되어
+    삭제가 미뤄질 수 있다 (삭제 누락 방향이라 데이터 유실 위험은 없다).
+    """
+    stale = list_stale_pages(retention_days)
+    for path in stale:
+        os.remove(path)
+    return stale
+
+
+def publish_pages(written_paths: list[str], deleted_paths: list[str]) -> None:
+    """새로 쓴 페이지 + 삭제된 페이지를 한 번에 git add -A/commit/push한다.
 
     실패 시 RuntimeError를 던진다 (호출부가 잡아서 로그만 남기고 파이프라인은 계속 진행할지 결정).
     내용이 이전과 동일해 커밋할 것이 없으면 조용히 넘어간다.
     """
-    if not paths:
+    if not written_paths and not deleted_paths:
         return
 
-    subprocess.run(["git", "add", *paths], cwd=REPO_ROOT, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "add", "-A", "--", ARTICLES_DIR], cwd=REPO_ROOT, check=True, capture_output=True
+    )
 
     staged = subprocess.run(
         ["git", "diff", "--cached", "--name-only"],
@@ -139,12 +167,16 @@ def publish_pages(paths: list[str], count: int) -> None:
     if not staged.stdout.strip():
         return
 
+    parts = []
+    if written_paths:
+        parts.append(f"{len(written_paths)}건 추가")
+    if deleted_paths:
+        parts.append(f"{len(deleted_paths)}건 정리(기간 경과)")
+    message = "번역 페이지 " + ", ".join(parts)
+
     try:
         subprocess.run(
-            ["git", "commit", "-m", f"번역 페이지 {count}건 추가"],
-            cwd=REPO_ROOT,
-            check=True,
-            capture_output=True,
+            ["git", "commit", "-m", message], cwd=REPO_ROOT, check=True, capture_output=True
         )
         subprocess.run(["git", "push"], cwd=REPO_ROOT, check=True, capture_output=True)
     except subprocess.CalledProcessError as exc:

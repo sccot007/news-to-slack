@@ -141,12 +141,21 @@ def main() -> int:
         new_items_by_site.setdefault(site["name"], []).append(item_out)
         newly_sent_entries.append(make_entry(site["id"], item["title"], item["link"]))
 
-    if written_page_paths:
-        try:
-            pages.publish_pages(written_page_paths, len(written_page_paths))
-            log(f"번역 페이지 {len(written_page_paths)}건 git 배포 완료")
-        except RuntimeError as exc:
-            log(f"번역 페이지 git 배포 실패 (Slack은 정상 발송 진행): {exc}")
+    if args.dry_run:
+        stale = pages.list_stale_pages()
+        if stale:
+            log(f"[dry-run] 오래된 번역 페이지 {len(stale)}건은 실제 실행 시 정리됨")
+    else:
+        deleted_page_paths = pages.prune_old_pages()
+        if written_page_paths or deleted_page_paths:
+            try:
+                pages.publish_pages(written_page_paths, deleted_page_paths)
+                log(
+                    f"번역 페이지 git 배포 완료 (신규 {len(written_page_paths)}건, "
+                    f"정리 {len(deleted_page_paths)}건)"
+                )
+            except RuntimeError as exc:
+                log(f"번역 페이지 git 배포 실패 (Slack은 정상 발송 진행): {exc}")
 
     send_digest(new_items_by_site, dry_run=args.dry_run)
 

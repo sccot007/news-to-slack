@@ -14,6 +14,8 @@
 - **Slack 발송**: Incoming Webhook으로 발송, 클릭 시 원문 기사로 이동
 - **전문(全文) 번역 페이지**: `full_translate: true`로 등록된 사이트(현재 CNCF Blog)는 제목을 클릭하면
   요약 대신 GitHub Pages에 자동 배포되는 번역 전문 페이지로 이동하고, 원문은 별도 링크로 제공 (`pages.py`)
+  - `ARTICLES_RETENTION_DAYS`(기본 30일)보다 오래된 페이지는 실행할 때마다 자동으로 삭제되고
+    git으로 커밋/push된다 (오래된 Slack 링크는 이후 404가 될 수 있음)
 
 ## 등록된 사이트 (카테고리별)
 

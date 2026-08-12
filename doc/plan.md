@@ -135,14 +135,23 @@ AI타임스(`aitimes`)는 `domestic` 카테고리로 재등록했다. 발행 빈
   `https://sccot007.github.io/news-to-slack/articles/...`).
 - Slack 메시지는 제목을 이 URL로 링크하고, 그 아래에 원문 링크를 `(원문 보기)` 형태로
   별도 표기한다 (`notifier/slack_notifier.py`).
-- 페이지 파일은 매 실행마다 로컬에 쓰고, 이번 실행에서 새로 쓴 파일들만 모아 한 번에
-  `git add && git commit && git push` 한다 (`pages.publish_pages`). 이미 커밋된 내용과
-  동일하면(재실행 등) 조용히 스킵한다.
+- 페이지 파일은 매 실행마다 로컬에 쓰고, 이번 실행에서 새로 쓴 파일 + 정리(삭제)된 파일을
+  모아 한 번에 `git add -A -- docs/articles && git commit && git push` 한다
+  (`pages.publish_pages`). 이미 커밋된 내용과 동일하면(재실행 등) 조용히 스킵한다.
 - **주의**: GitHub Pages 빌드는 push 후 반영까지 수십 초~1분 정도 걸릴 수 있어, Slack
   메시지가 도착한 직후 링크를 클릭하면 잠깐 404가 뜰 수 있다.
 - git push가 실패해도(네트워크 문제, 인증 문제 등) 예외를 로그로만 남기고 파이프라인은
   계속 진행해 Slack 발송까지는 정상적으로 완료한다 — 다만 그 경우 페이지 링크는 다음 push
   전까지 계속 404 상태다.
+- **보관 기간(`ARTICLES_RETENTION_DAYS`, 기본 30일)**: 매 실행(`--dry-run` 제외)마다
+  `pages.prune_old_pages()`가 파일 수정시각(mtime) 기준으로 오래된 페이지를 삭제하고,
+  삭제분도 위 커밋에 함께 포함된다. `sent_history.json`의 `HISTORY_RETENTION_DAYS`(기본 90일)와
+  별개 값이라, 이력 정리 시점보다 페이지 삭제가 먼저 일어날 수 있다 — 그 경우 오래된 Slack
+  메시지의 번역 페이지 링크는 404가 되지만 원문 링크(`(원문 보기)`)는 계속 유효하다.
+  `--dry-run`에서는 삭제 대신 몇 건이 정리 대상인지만 로그로 보여준다
+  (`pages.list_stale_pages()`).
+- mtime 기반 판단이라, 저장소를 새로 clone하면(재배포 등) 모든 페이지의 mtime이 체크아웃
+  시점으로 초기화되어 삭제가 실제보다 늦어질 수 있다 (삭제 누락 방향이라 데이터 유실 위험은 없음).
 
 ## 5. 모듈 설계 (`source/`)
 
@@ -236,9 +245,12 @@ Incoming Webhook URL 발급 완료, `source/.env`(커밋 제외)에 `SLACK_WEBHO
 - [x] M6. 요약/번역(summarizer) 추가 — Gemini 우선, Anthropic 폴백
 - [x] M7. 카테고리 쿼터 시스템(selector) 도입, 11개 사이트로 확장
 - [x] M8. CNCF Blog 전문 번역 + GitHub Pages 배포(`pages.py`) 도입, `cncf-blog` 카테고리 신설
-- [ ] M9. GitHub Pages 저장소 설정 활성화 (Settings → Pages, 수동, §7)
-- [ ] M10. Raspberry Pi 4에 배포 및 crontab 등록 (하루 1회, `0 8 * * *`, git push 권한 포함)
-- [ ] M11. (선택) Anthropic News/The Batch 대안 마련, 로그 파일 로테이션, 수집 실패 시 Slack 알림
+- [x] M9. GitHub Pages 저장소 설정 활성화 (레포를 public으로 전환 후 Settings → Pages 설정 완료,
+      `https://sccot007.github.io/news-to-slack/` 실전 확인)
+- [x] M10. 전문 번역 파싱을 JSON→구분자 포맷으로 교체 (실전 테스트 중 발견한 파싱 실패 수정, §7)
+- [x] M11. `docs/articles/*.html` 보관 기간(`ARTICLES_RETENTION_DAYS`, 기본 30일) 정리 기능 추가
+- [ ] M12. Raspberry Pi 4에 배포 및 crontab 등록 (하루 1회, `0 8 * * *`, git push 권한 포함)
+- [ ] M13. (선택) Anthropic News/The Batch 대안 마련, 로그 파일 로테이션, 수집 실패 시 Slack 알림
 
 ## 10. 참고 사항
 

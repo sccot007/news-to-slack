@@ -39,3 +39,6 @@ REQUEST_TIMEOUT = 15
 PAGES_BASE_URL = os.environ.get(
     "PAGES_BASE_URL", "https://sccot007.github.io/news-to-slack"
 )
+
+# 번역 전문 페이지(docs/articles/*.html) 보관 기간 (일). 이보다 오래된 페이지는 삭제한다.
+ARTICLES_RETENTION_DAYS = int(os.environ.get("ARTICLES_RETENTION_DAYS", "30"))
