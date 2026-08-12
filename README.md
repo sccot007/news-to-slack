@@ -47,8 +47,8 @@
     ├── fetcher/       # RSS / HTML 수집
     ├── notifier/      # Slack 발송
     └── data/
-        ├── sites.json         # 수집 대상 + 카테고리 쿼터 설정
-        └── sent_history.json  # 발송 이력(중복 방지)
+        ├── sites.json         # 수집 대상 + 카테고리 쿼터 설정 (git 추적)
+        └── sent_history.json  # 발송 이력(중복 방지) — .gitignore 처리, 로컬 전용 (git push 안 됨)
 ```
 
 ## 설치 및 실행

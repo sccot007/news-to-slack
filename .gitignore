@@ -1,4 +1,5 @@
 source/.env
+source/data/sent_history.json
 source/__pycache__/
 source/**/__pycache__/
 *.pyc

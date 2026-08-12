@@ -159,10 +159,10 @@ def main() -> int:
 
     send_digest(new_items_by_site, dry_run=args.dry_run)
 
-    if not args.dry_run and newly_sent_entries:
+    if not args.dry_run:
         updated_history = prune_old_entries(history + newly_sent_entries)
         save_history(updated_history)
-        log(f"이력 저장 완료 (총 {len(updated_history)}건)")
+        log(f"이력 저장 완료 (총 {len(updated_history)}건, 신규 {len(newly_sent_entries)}건)")
 
     return 0
 

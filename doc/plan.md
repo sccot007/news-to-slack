@@ -20,7 +20,7 @@
 | 요약/번역 | Gemini 우선 호출, 실패 시 Anthropic 폴백 |
 | 전문 번역 페이지 | `full_translate: true` 사이트(CNCF Blog)는 전문을 번역해 GitHub Pages에 배포, Slack 제목이 그 페이지로 연결 |
 | 사이트 설정 저장 | `source/data/sites.json` |
-| 중복 방지 저장소 | `source/data/sent_history.json` (가벼운 JSON, DB 아님) |
+| 중복 방지 저장소 | `source/data/sent_history.json` (가벼운 JSON, DB 아님, `.gitignore` 처리된 로컬 전용 파일) |
 
 필요 시 위 표는 언제든 갱신한다.
 
@@ -99,7 +99,11 @@ AI타임스(`aitimes`)는 `domestic` 카테고리로 재등록했다. 발행 빈
 
 ### 4.2 `sent_history.json` (발송 이력 / 중복 방지)
 
-기존과 동일. 로컬 "DB" 역할이며, 테이블의 컬럼에 해당하는 필드로 제목/키워드를 대조한다.
+로컬 "DB" 역할이며, 테이블의 컬럼에 해당하는 필드로 제목/키워드를 대조한다. `.gitignore`에
+등록되어 있어 **git에 커밋되지 않는다** — 실행 머신(Pi)에만 남는 순수 로컬 상태다. `docs/`
+번역 페이지와 달리 이 파일은 자동으로 git push되지 않는다 (실행 상태 캐시일 뿐, 버전 관리할
+"콘텐츠"가 아니라고 판단해 의도적으로 뺐다). Pi를 재클론/재배포하면 이력이 초기화되어
+과거에 보낸 글이 전부 "신규"로 다시 잡힐 수 있다는 점은 감안해야 한다.
 
 ```json
 {
